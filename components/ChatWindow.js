@@ -17,9 +17,9 @@ export default function ChatWindow({ messages, sendMessage }) {
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={msg.sender === 'user' ? styles.userMessage : styles.apiMessage}
+            className={msg.role === 'user' ? styles.userMessage : styles.apiMessage}
           >
-            {msg.text}
+            {msg.content}
           </div>
         ))}
       </div>
