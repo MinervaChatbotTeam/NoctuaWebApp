@@ -3,9 +3,10 @@ import ChatList from './ChatList';
 import ChatWindow from './ChatWindow';
 import { loadMessages, sendMessage } from '../utils/api';
 import styles from '../styles/Home.module.css';
+import { signOut } from 'next-auth/react';
 
 export default function ChatInterface() {
-  const [activeChat, setActiveChat] = useState('1');  // Default to Chat 1
+  const [activeChat, setActiveChat] = useState('chat1');  // Default to Chat 1
   const [chats, setChats] = useState([{ id: '1', title: 'Chat 1' }, { id: '2', title: 'Chat 2' }]);
   const [messages, setMessages] = useState([]);
 
@@ -35,6 +36,12 @@ export default function ChatInterface() {
 
   return (
     <div className={styles.chatContainer}>
+      <button
+            onClick={() => signOut()}
+            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transition duration-300 ease-in-out absolute right-0 top-1"
+          >
+            Sign out
+      </button>
       <ChatList 
         chats={chats} 
         setActiveChat={setActiveChat} 
