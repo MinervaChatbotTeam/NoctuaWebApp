@@ -9,6 +9,8 @@ if (!global.chatHistories) {
   global.chatHistories = {};
 }
 
+
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -16,6 +18,8 @@ export default async function handler(req, res) {
 
   // Authenticate the user
   const token = await getToken({ req, secret });
+
+  console.log(token);
 
   if (!token) {
     return res.status(401).json({ error: "Unauthorized. Invalid session token." });
