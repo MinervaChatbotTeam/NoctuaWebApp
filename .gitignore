@@ -41,3 +41,5 @@ next-env.d.ts
 
 *.package.json
 *.package_lock.json
+
+*firebase-credentials.json
