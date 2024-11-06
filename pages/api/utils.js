@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import axios from 'axios';
+import { LLMEngine } from './engine';
+import { query } from 'firebase/firestore';
 
 export async function chat_completer(messages) {
     /*
@@ -23,28 +24,24 @@ export async function chat_completer(messages) {
         content: msg.content  // Only send the content, no extra fields like 'timestamp'
     }));
 
+    const user_query = formattedMessages.pop().content
+    const chat_history = formattedMessages
+
     // LLM endpoint at Runpod
-    const URL_Runpod = `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/openai/v1/chat/completions`;
+    //const URL_Runpod = `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/openai/v1/chat/completions`;
 
     try {
         // Sending a request to Runpod with the chat to complete
-        const response = await axios.post(URL_Runpod, {
-            "messages": formattedMessages,  // Ensure this is in correct format
-            "model": "MinervaBotTeam/Phi-3-medium-MathDial"
-        }, {
-            headers: {
-                Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`
-            }
-        });
+        const response = await LLMEngine("/ask", query, chat_history, "").body[0].text.text
 
         // Log the full API response for debugging
-        console.log('Runpod API response:', response.data);
+        console.log('Runpod API response:', response);
 
         // Check if 'choices' exist and has content
-        if (response.status === 200 && response.data.choices && response.data.choices.length > 0) {
-            return response.data.choices[0].message.content;
+        if (response) {
+            return response;
         } else {
-            console.error('Unexpected response format:', JSON.stringify(response.data));
+            console.error('Unexpected response format:', JSON.stringify(response));
             throw new Error('Unexpected response format from Runpod API.');
         }
 
