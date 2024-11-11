@@ -31,8 +31,8 @@ export const LLMEngine = async (command, query, chat_history, image_url) => {
   }
 };
 
-
-    
+/*
+    Sample call
     // Call the function
     const trial =async ()=>{
 
@@ -49,3 +49,4 @@ export const LLMEngine = async (command, query, chat_history, image_url) => {
     }
     trial()
   
+*/
