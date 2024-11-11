@@ -2,7 +2,9 @@ const { Lambda } = require("aws-sdk");
 
 // Initialize the Lambda client
 const lambda = new Lambda({
-  region: 'us-west-2'
+  region: process.env.AWS_REGION,
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
 });
 
 // Function to invoke the engine function
