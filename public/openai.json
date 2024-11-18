@@ -1,0 +1,496 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "My Next.js API",
+    "version": "1.0.0",
+    "description": "API documentation for my Next.js app"
+  },
+  "paths": {
+    "/api/chat/users/creatConversation": {
+      "post": {
+        "summary": "Creates a new conversation",
+        "description": "This endpoint allows users to create a new conversation by providing a conversation ID and message.",
+        "operationId": "createConversation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conversationid": {
+                    "type": "string",
+                    "description": "The ID of the conversation to be created."
+                  },
+                  "message": {
+                    "type": "string",
+                    "description": "The initial message for the conversation."
+                  }
+                },
+                "required": ["conversationid", "message"]
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Conversation created successfully",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "messages": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "content": {
+                              "type": "string",
+                              "description": "The content of the message."
+                            },
+                            "role": {
+                              "type": "string",
+                              "description": "The role of the sender (user or assistant)."
+                            },
+                            "timestamp": {
+                              "type": "string",
+                              "description": "The timestamp when the message was sent."
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Bad Request - conversationid and message are required"
+            },
+            "401": {
+              "description": "Unauthorized - Invalid session token"
+            },
+            "500": {
+              "description": "Internal Server Error - Failed to create conversation"
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/users/deleteConversation": {
+      "delete": {
+        "summary": "Deletes a conversation for a user",
+        "description": "This endpoint allows users to delete a conversation by providing the conversation ID.",
+        "operationId": "deleteConversation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "conversationid": {
+                    "type": "string",
+                    "description": "The ID of the conversation to be deleted."
+                  }
+                },
+                "required": ["conversationid"]
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Conversation deleted successfully",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "message": {
+                        "type": "string",
+                        "description": "A message indicating the deletion was successful."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Bad Request - conversationid is required"
+            },
+            "401": {
+              "description": "Unauthorized - Invalid session token"
+            },
+            "403": {
+              "description": "Forbidden - Conversation ID not found in user's conversation list"
+            },
+            "404": {
+              "description": "Not Found - Conversation or user not found"
+            },
+            "405": {
+              "description": "Method Not Allowed - Only DELETE method is supported"
+            },
+            "500": {
+              "description": "Internal Server Error - Failed to delete conversation"
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/users/getAllConversations": {
+      "get": {
+        "summary": "Retrieves all conversations for the authenticated user",
+        "description": "This endpoint retrieves all conversations associated with the authenticated user based on their stored conversation IDs.",
+        "operationId": "getAllConversations",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved all conversations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conversations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "conversation_id": {
+                            "type": "string",
+                            "description": "The ID of the conversation"
+                          },
+                          "messages": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "content": {
+                                  "type": "string",
+                                  "description": "The content of the message"
+                                },
+                                "role": {
+                                  "type": "string",
+                                  "enum": ["user", "assistant"],
+                                  "description": "The role of the message sender"
+                                },
+                                "timestamp": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "description": "The timestamp when the message was sent"
+                                }
+                              }
+                            },
+                            "description": "List of messages in the conversation"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The creation date of the conversation"
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The last updated date of the conversation"
+                          }
+                        }
+                      },
+                      "description": "A list of conversations for the user"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid session token"
+          },
+          "404": {
+            "description": "Not Found - User not found or no conversations available"
+          },
+          "500": {
+            "description": "Internal Server Error - Failed to retrieve conversations"
+          }
+        }
+      }
+    },
+    "/api/chat/users/getConversationById": {
+      "get": {
+        "summary": "Retrieves a specific conversation by its ID for the authenticated user",
+        "description": "This endpoint retrieves a specific conversation for the authenticated user based on the provided conversation ID.",
+        "operationId": "getConversationById",
+        "parameters": [
+          {
+            "name": "conversationid",
+            "in": "query",
+            "required": true,
+            "description": "The ID of the conversation to retrieve",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved the conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conversation": {
+                      "type": "object",
+                      "properties": {
+                        "conversation_id": {
+                          "type": "string",
+                          "description": "The ID of the conversation"
+                        },
+                        "messages": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "content": {
+                                "type": "string",
+                                "description": "The content of the message"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": ["user", "assistant"],
+                                "description": "The role of the message sender"
+                              },
+                              "timestamp": {
+                                "type": "string",
+                                "format": "date-time",
+                                "description": "The timestamp when the message was sent"
+                              }
+                            }
+                          },
+                          "description": "List of messages in the conversation"
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "description": "The creation date of the conversation"
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "description": "The last updated date of the conversation"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing conversationid parameter"
+          },
+          "401": {
+            "description": "Unauthorized - Invalid session token"
+          },
+          "403": {
+            "description": "Forbidden - User does not have access to the requested conversation"
+          },
+          "404": {
+            "description": "Not Found - Conversation not found"
+          },
+          "500": {
+            "description": "Internal Server Error - Failed to retrieve the conversation"
+          }
+        }
+      }
+    },
+    "/api/chat/users/getLatestConversations": {
+      "get": {
+        "summary": "Retrieves the latest users",
+        "description": "This endpoint retrieves the latest users from the 'Users' collection.",
+        "operationId": "getLatestConversations",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved the latest users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "users": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The unique ID of the user"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "The name of the user"
+                          },
+                          "email": {
+                            "type": "string",
+                            "description": "The email of the user"
+                          },
+                          "conversation_ids": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "description": "The ID of the user's conversation"
+                            },
+                            "description": "List of conversation IDs the user is associated with"
+                          }
+                        }
+                      },
+                      "description": "List of latest users"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error - Failed to retrieve users"
+          }
+        }
+      }
+    },
+    "/api/chat/getMessages": {
+      "get": {
+        "summary": "Retrieve messages of a specific conversation",
+        "description": "This endpoint retrieves the messages of a specific conversation using the provided `chatId`.",
+        "operationId": "getMessages",
+        "parameters": [
+          {
+            "name": "chatId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The unique ID of the conversation whose messages are to be retrieved."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved the messages of the conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "sender": {
+                            "type": "string",
+                            "description": "The sender of the message"
+                          },
+                          "content": {
+                            "type": "string",
+                            "description": "The content of the message"
+                          },
+                          "timestamp": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of when the message was sent"
+                          }
+                        }
+                      },
+                      "description": "A list of messages in the conversation"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing or invalid `chatId` parameter"
+          },
+          "404": {
+            "description": "Conversation not found for the given `chatId`"
+          },
+          "500": {
+            "description": "Internal Server Error - Failed to retrieve the conversation"
+          }
+        }
+      }
+    },
+    "/api/chat/sendMessages": {
+      "post": {
+        "summary": "Send a message to a conversation and receive a response",
+        "description": "This endpoint allows the user to send a message to a conversation, where it gets added to the chat history, and an AI-generated response is provided in return.",
+        "operationId": "sendMessages",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "chatId": {
+                    "type": "string",
+                    "description": "The unique ID of the conversation"
+                  },
+                  "message": {
+                    "type": "string",
+                    "description": "The message content to be sent in the conversation"
+                  }
+                },
+                "required": ["chatId", "message"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully sent the message and received a response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "content": {
+                            "type": "string",
+                            "description": "The content of the message"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": ["user", "assistant"],
+                            "description": "The role of the message sender"
+                          },
+                          "timestamp": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "The timestamp of when the message was sent"
+                          }
+                        }
+                      },
+                      "description": "The updated chat history with both the user's and AI's messages"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Missing or invalid `chatId` or `message`"
+          },
+          "405": {
+            "description": "Method Not Allowed - Invalid HTTP method"
+          },
+          "500": {
+            "description": "Internal Server Error - Failed to process the message"
+          }
+        }
+      }
+    }
+  }
+}
