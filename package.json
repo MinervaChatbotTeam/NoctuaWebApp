@@ -17,11 +17,18 @@
     "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "firebase": "^10.14.0",
+    "fs": "^0.0.1-security",
     "langchain": "^0.3.3",
     "next": "^14.2.14",
     "next-auth": "^4.24.8",
+    "next-connect": "^1.0.0",
+    "next-swagger-doc": "^0.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "redoc": "^2.2.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "swagger-ui-react": "^5.18.2",
     "transformers": "^3.1.0"
   },
   "devDependencies": {
