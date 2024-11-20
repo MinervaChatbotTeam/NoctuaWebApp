@@ -90,7 +90,7 @@ export default async function handler(req, res) {
     });
 
     // Return the updated chat history with the AI response
-    return res.status(200).json({ messages: global.chatHistories[generatedDocId] });
+    return res.status(200).json({ messages: global.chatHistories[generatedDocId], conversationid:generatedDocId });
   } catch (error) {
     console.error('Error handling the conversation:', error.message);
     return res.status(500).json({ error: "Failed to complete the chat. Please try again later." });

@@ -14,7 +14,7 @@ export default function ChatWindow({ messages, sendMessage }) {
   return (
     <div className={styles.chatWindow}>
       <div className={styles.chatMessages}>
-        {messages.map((msg, index) => (
+        {messages&&messages.map((msg, index) => (
           <div
             key={index}
             className={msg.role === 'user' ? styles.userMessage : styles.apiMessage}

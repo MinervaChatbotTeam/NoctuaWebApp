@@ -31,11 +31,14 @@ export async function chat_completer(messages) {
     //const URL_Runpod = `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/openai/v1/chat/completions`;
 
     try {
+
         // Sending a request to Runpod with the chat to complete
-        const response = await LLMEngine("/ask", query, chat_history, "").body[0].text.text
+        var response = await LLMEngine("/ask", user_query, chat_history, "")
+        console.log(response)
+        var response = response.body[0].text.text
 
         // Log the full API response for debugging
-        console.log('Runpod API response:', response);
+        console.log('Lambda response:', response);
 
         // Check if 'choices' exist and has content
         if (response) {
@@ -46,11 +49,11 @@ export async function chat_completer(messages) {
         }
 
     } catch (error) {
-        console.error('Error calling Runpod API:', error.message);
+        console.error('Error calling Lambda Function:', error.message);
 
         // Log the full error response for further debugging
         if (error.response) {
-            console.error('Runpod API error response:', JSON.stringify(error.response.data));
+            console.error('Lambda error response:', JSON.stringify(error.response.data));
         }
 
         throw new Error('Failed to complete the chat. Please try again later.');
