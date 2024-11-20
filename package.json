@@ -9,11 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.693.0",
+    "@aws-sdk/client-lambda": "^3.693.0",
+    "@aws-sdk/client-s3": "^3.693.0",
     "@google-cloud/firestore": "^7.10.0",
     "@huggingface/transformers": "^3.0.0",
     "@langchain/core": "^0.3.13",
     "@langchain/openai": "^0.3.11",
-    "aws-sdk": "^2.1691.0",
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "firebase": "^10.14.0",
