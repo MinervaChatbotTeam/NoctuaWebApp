@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import styles from '../styles/Home.module.css';
+import ReactMarkdown from "react-markdown";
+
 
 export default function ChatWindow({ messages, sendMessage }) {
   const [message, setMessage] = useState('');
@@ -19,7 +21,7 @@ export default function ChatWindow({ messages, sendMessage }) {
             key={index}
             className={msg.role === 'user' ? styles.userMessage : styles.apiMessage}
           >
-            {msg.content}
+             {<ReactMarkdown>{msg.content}</ReactMarkdown>}
           </div>
         ))}
       </div>

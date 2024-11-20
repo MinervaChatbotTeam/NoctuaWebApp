@@ -7,9 +7,12 @@ const apiClient = {
    * Create a new chat conversation.
    * @returns {Promise<object>} Response data containing the new chat details.
    */
-  createChat: async () => {
+  createChat: async (message, conversationid) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/chat/createChat`);
+      const response = await axios.post(`${API_BASE_URL}/chat/users/createConversation`, {
+        message,
+        conversationid
+      });
       return response.data;
     } catch (error) {
       console.error('Error creating chat:', error);
@@ -24,7 +27,7 @@ const apiClient = {
    */
   getConversationById: async (conversationId) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/chat/getConversationById`, {
+      const response = await axios.get(`${API_BASE_URL}/chat/users/getConversationById`, {
         params: { conversationid: conversationId },
       });
       return response.data;
@@ -40,8 +43,22 @@ const apiClient = {
    */
   getLatestConversations: async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/chat/getLatestConversations`);
-      return response.data.users; // Adjust according to the API response format.
+      const response = await axios.get(`${API_BASE_URL}/chat/users/getLatestConversations`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching latest conversations:', error);
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Fetch the latest conversations.
+   * @returns {Promise<object[]>} List of the latest conversations.
+   */
+  getAllConversations: async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/chat/users/getAllConversations`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching latest conversations:', error);
       throw error.response?.data || error;
@@ -58,7 +75,7 @@ const apiClient = {
       const response = await axios.get(`${API_BASE_URL}/chat/getMessages`, {
         params: { chatId },
       });
-      return response.data.messages;
+      return response.data;
     } catch (error) {
       console.error('Error fetching messages:', error);
       throw error.response?.data || error;
@@ -73,7 +90,7 @@ const apiClient = {
    */
   sendMessage: async (chatId, message) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/chat/sendMessages`, {
+      const response = await axios.post(`${API_BASE_URL}/chat/sendMessage`, {
         chatId,
         message,
       });
