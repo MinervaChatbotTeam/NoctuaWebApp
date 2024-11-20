@@ -1,6 +1,6 @@
 import { getToken } from "next-auth/jwt";
 import { db } from '../../../../database/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore"; 
+import { doc, getDoc, collection, query, where, getDocs, documentId } from "firebase/firestore"; 
 
 const secret = process.env.NEXTAUTH_SECRET;
 
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     // Query Firestore for conversations using the conversation_ids array
     const conversationsQuery = query(
       collection(db, "Conversations"),
-      where("conversation_id", "in", userData.conversation_ids) // Use Firestore 'in' query to get multiple conversations
+      where(documentId(), "in", userData.conversation_ids) // Use Firestore 'in' query to get multiple conversations
     );
     const conversationsSnapshot = await getDocs(conversationsQuery);
 
