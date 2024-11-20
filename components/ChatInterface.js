@@ -4,34 +4,52 @@ import ChatWindow from './ChatWindow';
 import { loadMessages, sendMessage } from '../utils/api';
 import styles from '../styles/Home.module.css';
 import { signOut } from 'next-auth/react';
+import apiClient from '@/ApiClient';
 
 export default function ChatInterface() {
-  const [activeChat, setActiveChat] = useState('chat1');  // Default to Chat 1
-  const [chats, setChats] = useState([{ id: '1', title: 'Chat 1' }, { id: '2', title: 'Chat 2' }]);
+  const [activeChat, setActiveChat] = useState(null);  // Default to Chat 1
+  const [chats, setChats] = useState([]);
   const [messages, setMessages] = useState([]);
+
 
   // Load messages for the active chat
   useEffect(() => {
-    const fetchMessages = async () => {
-      const chatMessages = await loadMessages(activeChat);
-      setMessages(chatMessages);
+    
+    const getChats = async () => {
+      const response = await (apiClient.getAllConversations(activeChat));
+      setChats(response.conversations.map((chat,index)=>({id:chat.conversation_id, title: index})));
     };
+    
+    getChats();
+  }, []);
+
+  // Load messages for the active chat
+  useEffect(() => {
+    if (activeChat){
+    const fetchMessages = async () => {
+      const chatMessages = await apiClient.getMessages(activeChat);
+      setMessages(chatMessages.messages);
+    };
+    
     fetchMessages();
+  }
   }, [activeChat]);
 
   // Function to handle sending a message
   const handleSendMessage = async (message) => {
     if (message.trim() === '') return;  // Do nothing if the message is only whitespace
-    const updatedMessages = await sendMessage(activeChat, message);
+    const updatedMessages = await apiClient.sendMessage(activeChat, message);
     setMessages(updatedMessages);  // Update the messages in the current chat
   };
 
   // Add a new chat
-  const addNewChat = () => {
+  const addNewChat = async () => {
     const newChatId = (chats.length + 1).toString();
-    const newChat = { id: newChatId, title: `Chat ${newChatId}` };
+    const response = await (apiClient.createChat("Hey let's start", "Temp"))
+    
+    const newChat = { id: response.conversationid, title: `Chat ${newChatId}` };
     setChats([...chats, newChat]);  // Add the new chat to the list
-    setActiveChat(newChatId);       // Switch to the new chat
+    setActiveChat(response.conversationid);       // Switch to the new chat
   };
 
   return (
