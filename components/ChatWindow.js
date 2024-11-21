@@ -24,6 +24,7 @@ export default function ChatWindow({ messages, sendMessage }) {
              {<ReactMarkdown>{msg.content}</ReactMarkdown>}
           </div>
         ))}
+        {messages.length==0&&<div>Send a message to start a new chat!</div>}
       </div>
       <div className={styles.chatInputContainer}>
         <input

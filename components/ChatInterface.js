@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import ChatList from './ChatList';
 import ChatWindow from './ChatWindow';
-import { loadMessages, sendMessage } from '../utils/api';
 import styles from '../styles/Home.module.css';
 import { signOut } from 'next-auth/react';
 import apiClient from '@/ApiClient';
@@ -11,15 +10,12 @@ export default function ChatInterface() {
   const [chats, setChats] = useState([]);
   const [messages, setMessages] = useState([]);
 
-
+  const getChats = async () => {
+    const response = await (apiClient.getAllConversations(activeChat));
+    setChats(response.conversations.map((chat)=>({id:chat.id, title: chat.conversation_id})));
+  };
   // Load messages for the active chat
   useEffect(() => {
-    
-    const getChats = async () => {
-      const response = await (apiClient.getAllConversations(activeChat));
-      setChats(response.conversations.map((chat,index)=>({id:chat.conversation_id, title: index})));
-    };
-    
     getChats();
   }, []);
 
@@ -32,25 +28,36 @@ export default function ChatInterface() {
     };
     
     fetchMessages();
+  }else {
+    setMessages([])
   }
   }, [activeChat]);
 
   // Function to handle sending a message
   const handleSendMessage = async (message) => {
+    if (activeChat){
+      setMessages([...updatedMessages, {role:"user", content:message}]);
     if (message.trim() === '') return;  // Do nothing if the message is only whitespace
     const updatedMessages = await apiClient.sendMessage(activeChat, message);
     setMessages(updatedMessages);  // Update the messages in the current chat
+  } else {
+    await addNewChat(message);
+  }
   };
 
   // Add a new chat
-  const addNewChat = async () => {
+  const addNewChat = async (message) => {
     const newChatId = (chats.length + 1).toString();
-    const response = await (apiClient.createChat("Hey let's start", "Temp"))
+    const response = await (apiClient.createChat(message, `Chat ${newChatId}`))
     
     const newChat = { id: response.conversationid, title: `Chat ${newChatId}` };
     setChats([...chats, newChat]);  // Add the new chat to the list
     setActiveChat(response.conversationid);       // Switch to the new chat
   };
+
+  const noActiveChat = ()=>{
+    setActiveChat(null)
+  }
 
   return (
     <div className={styles.chatContainer}>
@@ -63,7 +70,8 @@ export default function ChatInterface() {
       <ChatList 
         chats={chats} 
         setActiveChat={setActiveChat} 
-        addNewChat={addNewChat} 
+        addNewChat={noActiveChat} 
+        getChats={getChats}
       />
       <ChatWindow
         messages={messages}

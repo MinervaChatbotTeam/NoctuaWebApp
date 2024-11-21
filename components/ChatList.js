@@ -1,6 +1,7 @@
+import apiClient from '@/ApiClient';
 import styles from '../styles/Home.module.css';
 
-export default function ChatList({ chats, setActiveChat, addNewChat }) {
+export default function ChatList({ chats, setActiveChat, addNewChat, getChats }) {
   return (
     <div className={styles.chatList}>
       <button className={styles.newChat} onClick={addNewChat}>
@@ -14,6 +15,7 @@ export default function ChatList({ chats, setActiveChat, addNewChat }) {
             onClick={() => setActiveChat(chat.id)}
           >
             {chat.title}
+            <button className='bg-red-500' onClick={async()=>{(await apiClient.deleteChat(chat.id));getChats(); setActiveChat(null)}}>  X</button>
           </li>
         ))}
       </ul>

@@ -37,6 +37,23 @@ const apiClient = {
     }
   },
 
+
+  /**
+   * Delete conversation by ID.
+   * @param {string} conversationId - The ID of the conversation to delete.
+   * @returns {Promise<object>} The conversation data.
+   */
+  deleteChat: async (conversationId) => {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/chat/users/deleteConversation`, {data:{ conversationid: conversationId }}
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching conversation:', error);
+      throw error.response?.data || error;
+    }
+  },
+
   /**
    * Fetch the latest conversations.
    * @returns {Promise<object[]>} List of the latest conversations.
