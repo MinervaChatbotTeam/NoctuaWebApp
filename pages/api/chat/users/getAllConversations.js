@@ -35,12 +35,16 @@ export default async function handler(req, res) {
     // Query Firestore for conversations using the conversation_ids array
     const conversationsQuery = query(
       collection(db, "Conversations"),
-      where(documentId(), "in", userData.conversation_ids) // Use Firestore 'in' query to get multiple conversations
+      where(documentId(), "in", userData.conversation_ids.slice(0,30)) // Use Firestore 'in' query to get multiple conversations
     );
     const conversationsSnapshot = await getDocs(conversationsQuery);
 
     // Collect all conversation data
-    const conversations = conversationsSnapshot.docs.map(doc => doc.data());
+    const conversations = conversationsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      data.id = doc.id;
+      return data
+    });
 
     // Return the user's conversations
     return res.status(200).json({ conversations });
