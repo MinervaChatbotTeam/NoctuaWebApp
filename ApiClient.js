@@ -11,11 +11,50 @@ const apiClient = {
     try {
       const response = await axios.post(`${API_BASE_URL}/chat/users/createConversation`, {
         message,
-        conversationid
+        conversationid,
       });
       return response.data;
     } catch (error) {
       console.error('Error creating chat:', error);
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Fetch messages for a specific chat.
+   * @param {string} chatId - The ID of the chat to fetch messages for.
+   * @returns {Promise<object>} The conversation data.
+   */
+  getMessages: async (chatId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/chat/getMessages`, {
+        params: { chatId },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      throw error.response?.data || error;
+    }
+  },
+
+  /**
+   * Send a message in a specific chat and receive the assistant's response.
+   * @param {string} chatId - The ID of the chat to send the message to.
+   * @param {string} message - The message content to send.
+   * @returns {Promise<object>} The assistant's response message.
+   */
+  sendMessage: async (chatId, message) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/chat/sendMessage`, {
+        chatId,
+        message,
+      });
+      // Extract the assistant's message (assuming it's the last one)
+      const messages = response.data.messages;
+      const assistantMessage = messages[messages.length - 1];
+      return assistantMessage;
+    } catch (error) {
+      console.error('Error sending message:', error);
       throw error.response?.data || error;
     }
   },
@@ -82,41 +121,6 @@ const apiClient = {
     }
   },
 
-  /**
-   * Fetch messages for a specific chat.
-   * @param {string} chatId - The ID of the chat to fetch messages for.
-   * @returns {Promise<object[]>} List of messages for the chat.
-   */
-  getMessages: async (chatId) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/chat/getMessages`, {
-        params: { chatId },
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      throw error.response?.data || error;
-    }
-  },
-
-  /**
-   * Send a message in a specific chat and receive a response.
-   * @param {string} chatId - The ID of the chat to send the message to.
-   * @param {string} message - The message content to send.
-   * @returns {Promise<object[]>} Updated list of messages including the AI's response.
-   */
-  sendMessage: async (chatId, message) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/chat/sendMessage`, {
-        chatId,
-        message,
-      });
-      return response.data.messages;
-    } catch (error) {
-      console.error('Error sending message:', error);
-      throw error.response?.data || error;
-    }
-  },
 };
 
 export default apiClient;
