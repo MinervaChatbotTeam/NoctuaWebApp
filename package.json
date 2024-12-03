@@ -18,7 +18,7 @@
     "@langchain/openai": "^0.3.11",
     "aws-sdk": "^2.1692.0",
     "axios": "^1.7.7",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.4.6",
     "firebase": "^10.14.0",
     "fs": "^0.0.1-security",
     "langchain": "^0.3.3",
