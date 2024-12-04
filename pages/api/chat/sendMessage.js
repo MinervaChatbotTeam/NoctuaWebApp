@@ -53,9 +53,11 @@ export default async function handler(req, res) {
 
       // Call the chat_completer function to get AI response
       const aiResponse = await chat_completer(global.chatHistories[chatId]);
-
+      const text = aiResponse[0].text.text
+      console.log(aiResponse)
       const apiMessage = {
-        content: aiResponse,
+        content: text,
+        images: aiResponse.slice(1),
         role: 'assistant',
         timestamp: new Date().toISOString()  // Add timestamp for AI response (for Firebase)
       };
