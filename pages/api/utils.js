@@ -35,7 +35,7 @@ export async function chat_completer(messages) {
         // Sending a request to Runpod with the chat to complete
         var response = await LLMEngine("/ask", user_query, chat_history, "")
         console.log(response)
-        var response = response.body[0].text.text
+        var response = response.body
 
         // Log the full API response for debugging
         console.log('Lambda response:', response);

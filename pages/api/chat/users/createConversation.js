@@ -73,10 +73,12 @@ export default async function handler(req, res) {
     }
 
     // Call the chat_completer function to get the AI response (integrate with RunPod)
-    const aiResponse = await chat_completer(global.chatHistories[generatedDocId]);
-
+    const aiResponse = (await chat_completer(global.chatHistories[generatedDocId]));
+    const text = aiResponse[0].text.text
+    console.log("Hi",aiResponse)
     const apiMessage = {
-      content: aiResponse,
+      content: text,
+      images: aiResponse.slice(1),
       role: 'assistant',
       timestamp: new Date().toISOString()  // Add timestamp for AI response (for Firebase)
     };

@@ -53,8 +53,15 @@ export default function ChatWindow({ messages, sendMessage }) {
                   ? 'bg-blue-600 text-white ml-auto rounded-br-none'
                   : 'bg-gray-700 text-white mr-auto rounded-bl-none'
               }`}
-            >
+            > 
               <ReactMarkdown>{msg.content}</ReactMarkdown>
+              {/* Showing images*/}
+              {(msg.images&&msg.images.length>0)&&msg.images.map((img)=>
+              <div className='p-2'>
+                <img src={img.image_url}/>
+                <ReactMarkdown>{img.title.text}</ReactMarkdown>
+              </div>
+              )}
             </motion.div>
           ))}
           {loading && (

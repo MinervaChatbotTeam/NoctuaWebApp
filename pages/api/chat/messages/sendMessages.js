@@ -53,10 +53,11 @@ export default async function handler(req, res) {
     const userMessage = { content: message, role: 'user', timestamp: new Date().toISOString() };
     global.chatHistories[conversationid].push(userMessage);
 
-    // Step 4: Call the chat_completer function to get AI response
-    const aiResponse = await chat_completer(global.chatHistories[conversationid]);
+    // Call the chat_completer function to get the AI response (integrate with RunPod)
+    const aiResponse = (await chat_completer(global.chatHistories[generatedDocId]));
+    const text = aiResponse[0].text.text
     const apiMessage = {
-      content: aiResponse,
+      content: text,
       role: 'assistant',
       timestamp: new Date().toISOString()
     };
