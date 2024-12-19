@@ -8,6 +8,7 @@ if (!global.chatHistories) {
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
+    
     const { chatId, message } = req.body;
 
     // Ensure chatId and message are valid
@@ -53,7 +54,7 @@ export default async function handler(req, res) {
 
       // Call the chat_completer function to get AI response
       const aiResponse = await chat_completer(global.chatHistories[chatId]);
-      const text = aiResponse[0].text.text
+      const text = aiResponse[0].text.text.replace(/\n/g, "\n\n")
       console.log(aiResponse)
       const apiMessage = {
         content: text,

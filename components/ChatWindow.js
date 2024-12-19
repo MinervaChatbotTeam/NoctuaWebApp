@@ -11,7 +11,7 @@ export default function ChatWindow({ messages, sendMessage }) {
   const handleSend = async () => {
     if (message.trim()) {
       setLoading(true);
-      await sendMessage(message);
+      console.log("Sending a message ...", await sendMessage(message));
       setMessage('');
       setLoading(false);
     }

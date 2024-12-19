@@ -49,7 +49,11 @@ export default function ChatInterface() {
       if (activeChat) {
         // Wait for the assistant's reply and append only the new message
         const assistantMessage = await apiClient.sendMessage(activeChat, message);
-
+        if (assistantMessage.error != undefined){
+          alert("Error happened while sending the message")
+          window.location.reload()
+          return
+        }
         // Append only the assistant's message to avoid duplication
         setMessages((prevMessages) => [...prevMessages, assistantMessage]);
       } else {
@@ -61,6 +65,12 @@ export default function ChatInterface() {
   const addNewChat = async (message) => {
     const newChatId = (chats.length + 1).toString();
     const response = await apiClient.createChat(message, `Chat ${newChatId}`);
+    console.log("Response from the backend", response)
+    if (response.error != undefined){
+      alert("Error happened while sending the message")
+      window.location.reload()
+      return
+    }
     const newChat = { id: response.conversationid, title: `Chat ${newChatId}` };
     setChats([...chats, newChat]);
     setActiveChat(response.conversationid);

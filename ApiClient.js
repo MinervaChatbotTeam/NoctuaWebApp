@@ -16,7 +16,7 @@ const apiClient = {
       return response.data;
     } catch (error) {
       console.error('Error creating chat:', error);
-      throw error.response?.data || error;
+      return {error}
     }
   },
 
@@ -55,7 +55,7 @@ const apiClient = {
       return assistantMessage;
     } catch (error) {
       console.error('Error sending message:', error);
-      throw error.response?.data || error;
+      return {error}
     }
   },
 

@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
-
+  
   // Authenticate the user
   const token = await getToken({ req, secret });
 
@@ -52,6 +52,12 @@ export default async function handler(req, res) {
     // Update the global chat history cache
     global.chatHistories[generatedDocId] = [userMessage];
 
+
+
+    // Call the chat_completer function to get the AI response (integrate with RunPod)
+    const aiResponse = (await chat_completer(global.chatHistories[generatedDocId]));
+    const text = aiResponse[0].text.text.replace(/\n/g, "\n\n")
+
     // Add this conversation ID to the user's conversation_ids
     const userDocRef = doc(db, "Users", token.email);
     const userDocSnap = await getDoc(userDocRef);
@@ -72,9 +78,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Call the chat_completer function to get the AI response (integrate with RunPod)
-    const aiResponse = (await chat_completer(global.chatHistories[generatedDocId]));
-    const text = aiResponse[0].text.text
+    
     console.log("Hi",aiResponse)
     const apiMessage = {
       content: text,
