@@ -1,4 +1,3 @@
-// ChatWindow.js
 import { useState, useEffect } from 'react';
 import ReactMarkdown from "react-markdown";
 import { FaPaperPlane } from 'react-icons/fa';
@@ -24,9 +23,51 @@ export default function ChatWindow({ messages, sendMessage }) {
     }
   }, [messages]);
 
+  const renderReferences = (content) => {
+    const referenceRegex = /<(.+?)\|(.+?)>/g;
+    const unwantedTextRegex = /(\*\*|\*|\bReferences\b|pages:|,)+/gi;
+    const matches = [...content.matchAll(referenceRegex)];
+
+    let contentWithoutReferences = content
+      .replace(referenceRegex, '')
+      .replace(unwantedTextRegex, '')
+      .replace(/,\s*,/g, '')
+      .replace(/^\s*,|,\s*$/g, '')
+      .trim();
+
+    if (matches.length === 0) return { contentWithoutReferences, references: null };
+
+    const references = (
+      <div className="flex flex-wrap space-x-2 mt-2">
+        {matches.map((match, index) => {
+          const [_, url, label] = match;
+
+          return (
+            <div key={index} className="relative group inline-block">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-6 h-6 bg-gray-600 text-white text-sm font-bold rounded-full cursor-pointer hover:bg-blue-500 transition-colors"
+              >
+                {index + 1}
+              </a>
+              <div
+                className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded-md p-2 mt-2 z-10 w-max max-w-sm shadow-lg"
+              >
+                {label}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+
+    return { contentWithoutReferences, references };
+  };
+
   return (
     <div className="relative bg-gray-900 text-white h-full p-4 flex flex-col">
-      {/* Header and Examples */}
       {messages.length === 0 && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -39,31 +80,48 @@ export default function ChatWindow({ messages, sendMessage }) {
         </motion.div>
       )}
 
-      {/* Chat Messages */}
       {messages.length > 0 && (
-        <div className="chatMessages overflow-y-auto flex-grow space-y-4 pt-4">
-          {messages.map((msg, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, x: msg.role === 'user' ? 50 : -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-              className={`p-3 max-w-[75%] rounded-xl shadow-md ${
-                msg.role === 'user'
-                  ? 'bg-blue-600 text-white ml-auto rounded-br-none'
-                  : 'bg-gray-700 text-white mr-auto rounded-bl-none'
-              }`}
-            > 
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
-              {/* Showing images*/}
-              {(msg.images&&msg.images.length>0)&&msg.images.map((img)=>
-              <div className='p-2'>
-                <img src={img.image_url}/>
-                <ReactMarkdown>{img.title.text}</ReactMarkdown>
-              </div>
-              )}
-            </motion.div>
-          ))}
+        <div className="chatMessages overflow-y-auto flex-grow space-y-6 pt-4">
+          {messages.map((msg, index) => {
+            const { contentWithoutReferences, references } = renderReferences(msg.content);
+
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: msg.role === 'user' ? 50 : -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3 }}
+                className={`p-4 max-w-[75%] rounded-xl shadow-md ${
+                  msg.role === 'user'
+                    ? 'bg-blue-600 text-white ml-auto rounded-br-none'
+                    : 'bg-gray-700 text-white mr-auto rounded-bl-none'
+                }`}
+              >
+                <ReactMarkdown className="text-base leading-relaxed text-gray-100">{contentWithoutReferences}</ReactMarkdown>
+                
+                {references}
+
+                {msg.images && msg.images.length > 0 && (
+                  <div className="space-y-6 mt-4">
+                    {msg.images.map((img, idx) => (
+                      <div key={idx} className="overflow-hidden rounded-lg shadow-md border border-gray-700">
+                        <img
+                          src={img.image_url}
+                          alt="Chat Image"
+                          className="w-full h-auto object-cover"
+                        />
+                        {img.title?.text && (
+                          <div className="p-3 bg-gray-800 text-center text-sm">
+                            <ReactMarkdown className="text-gray-300">{img.title.text}</ReactMarkdown>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
           {loading && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -77,7 +135,6 @@ export default function ChatWindow({ messages, sendMessage }) {
         </div>
       )}
 
-      {/* Chat Input */}
       <div className="chatInputContainer flex mt-4">
         <input
           type="text"

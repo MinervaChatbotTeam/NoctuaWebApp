@@ -13,23 +13,23 @@ export default () => {
       {!session ? (
         <button
           onClick={handleSignIn}
-          className="flex items-center justify-center bg-white border border-gray-300 text-gray-700 font-bold py-2 px-6 rounded-full shadow-lg transition duration-300 ease-in-out hover:bg-gray-100"
+          className="flex items-center justify-center bg-white text-gray-700 font-medium py-3 px-6 rounded-lg shadow-md transition duration-500 hover:shadow-lg hover:border-blue-500 border border-transparent"
         >
           <Image
             src="/google.png"
             alt="Google Logo"
-            width={40}
-            height={40}
-            className="mr-2"
+            width={20}
+            height={20}
+            className="mr-3"
           />
-          Sign in with Google
+          <span className="text-sm">Sign in with Google</span>
         </button>
       ) : (
         <div className="text-center">
-          <p className="text-white text-xl mb-4">Welcome, {session.user.name}!</p>
+          <p className="text-gray-800 text-lg mb-4">Welcome, {session.user.name}!</p>
           <button
             onClick={() => signOut()}
-            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transition duration-300 ease-in-out"
+            className="bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-6 rounded-lg shadow-md transition duration-500 hover:shadow-lg"
           >
             Sign out
           </button>
