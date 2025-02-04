@@ -1,6 +1,7 @@
+// ChatWindow.js
 import { useState, useEffect } from 'react';
 import ReactMarkdown from "react-markdown";
-import { FaPaperPlane } from 'react-icons/fa';
+import { FaPaperPlane, FaPaperclip } from 'react-icons/fa'; // Importing the paperclip icon
 import { motion } from 'framer-motion';
 
 export default function ChatWindow({ messages, sendMessage }) {
@@ -10,8 +11,9 @@ export default function ChatWindow({ messages, sendMessage }) {
   const handleSend = async () => {
     if (message.trim()) {
       setLoading(true);
-      console.log("Sending a message ...", await sendMessage(message));
-      setMessage('');
+      const currentMessage = message; // Store the message before clearing the input
+      setMessage(''); // Clear the input field immediately
+      await sendMessage(currentMessage); // Call the sendMessage function with the stored message
       setLoading(false);
     }
   };
@@ -137,13 +139,28 @@ export default function ChatWindow({ messages, sendMessage }) {
 
       <div className="chatInputContainer flex mt-4">
         <input
+          type="file"
+          accept="*/*"
+          className="hidden"
+          id="fileInput"
+          onChange={(e) => {
+            const file = e.target.files[0];
+            if (file) {
+              console.log("File selected:", file);
+            }
+          }}
+        />
+        <label htmlFor="fileInput" className="flex items-center justify-center p-3 bg-gray-800 text-white rounded-full cursor-pointer hover:bg-blue-500 transition duration-300 mr-2">
+          <FaPaperclip size={20} /> {/* Paperclip icon */}
+        </label>
+        <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              handleSend();
+              handleSend(); // Call handleSend to send the message
             }
           }}
           placeholder="Type a message..."
@@ -152,7 +169,7 @@ export default function ChatWindow({ messages, sendMessage }) {
         />
         <button
           onClick={handleSend}
-          className={`ml-2 p-3 text-white rounded-full flex items-center hover:text-blue-500 transition duration-300 ${
+          className={`ml-2 p-3 text-white rounded-full flex items-center bg-blue-600 hover:bg-blue-700 transition duration-300 ${
             loading ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           disabled={loading}
