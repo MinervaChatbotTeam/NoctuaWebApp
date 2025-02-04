@@ -22,7 +22,21 @@ export default function ChatInterface() {
   const getChats = async () => {
     const response = await apiClient.getAllConversations(activeChat);
     setChats(
-      response.conversations.map((chat) => ({ id: chat.id, title: chat.conversation_id }))
+      response.conversations
+        .map((chat) => {
+          // Find the most recent message timestamp
+          const lastMessageTimestamp = chat.messages.reduce((latest, message) => {
+            const messageTime = new Date(message.timestamp).getTime();
+            return messageTime > latest ? messageTime : latest;
+          }, 0);
+  
+          return {
+            id: chat.id,
+            title: chat.conversation_id,
+            lastMessageTimestamp // Store the last message timestamp
+          };
+        })
+        .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp) // Sort by lastMessageTimestamp in descending order
     );
   };
 
@@ -143,7 +157,7 @@ export default function ChatInterface() {
               isSidebarCollapsed ? 'justify-center' : ''
             }`}
           >
-            <FaSignOutAlt size={20} />
+            <FaSignOutAlt size={20} className="mr-2" />
             {!isSidebarCollapsed && <span className="ml-2">Sign Out</span>}
           </button>
         </div>
