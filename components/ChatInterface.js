@@ -1,11 +1,11 @@
-// ChatInterface.js
 import { useState, useEffect } from 'react';
 import ChatList from './ChatList';
 import ChatWindow from './ChatWindow';
 import { signOut } from 'next-auth/react';
 import apiClient from '@/ApiClient';
-import { FaChevronLeft, FaChevronRight, FaSignOutAlt, FaBug } from 'react-icons/fa';
-import { GiOwl } from 'react-icons/gi'; // Placeholder logo
+import { FaChevronLeft, FaChevronRight, FaSignOutAlt, FaBug, FaQuestionCircle } from 'react-icons/fa';
+import { GiOwl } from 'react-icons/gi';
+import { motion } from 'framer-motion';
 
 export default function ChatInterface() {
   const [activeChat, setActiveChat] = useState(null);
@@ -13,6 +13,7 @@ export default function ChatInterface() {
   const [messages, setMessages] = useState([]);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
+  const [isInstructionsModalOpen, setInstructionsModalOpen] = useState(false);
   const [bugTitle, setBugTitle] = useState('');
   const [bugDescription, setBugDescription] = useState('');
   const [bugImage, setBugImage] = useState(null);
@@ -28,7 +29,7 @@ export default function ChatInterface() {
             const messageTime = new Date(message.timestamp).getTime();
             return messageTime > latest ? messageTime : latest;
           }, 0);
-  
+
           return {
             id: chat.id,
             title: chat.conversation_id,
@@ -61,7 +62,7 @@ export default function ChatInterface() {
         ...prevMessages,
         { role: 'user', content: message },
       ]);
-  
+
       if (activeChat) {
         const assistantMessage = await apiClient.sendMessage(activeChat, message);
         if (assistantMessage.error != undefined) {
@@ -98,6 +99,9 @@ export default function ChatInterface() {
     setModalOpen(false);
   };
 
+  const handleOpenInstructions = () => setInstructionsModalOpen(true);
+  const handleCloseInstructions = () => setInstructionsModalOpen(false);
+
   return (
     <div className="flex h-screen">
       <div className={`transition-all duration-300 bg-gray-900 p-2 shadow-lg backdrop-blur-md overflow-hidden ${isSidebarCollapsed ? 'w-20' : 'w-64'} flex flex-col`}>
@@ -129,16 +133,23 @@ export default function ChatInterface() {
         />
         {/* Bug Report Button */}
         <div className="mt-4">
-          <button onClick={() => setModalOpen(true)} className={`hover:text-blue-500 text-gray-300 p-2 rounded-lg transition-colors duration-300 w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+          <button onClick={() => setModalOpen(true)} className={`hover:bg-gray-700 text-gray-300 p-2 rounded-lg transition-colors duration-300 w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : ''}`}>
             <FaBug size={20} className="mr-2" />
             {!isSidebarCollapsed && <span className="ml-2">Report Issue</span>}
+          </button>
+        </div>
+        {/* How-to Button */}
+        <div className="mt-4">
+          <button onClick={handleOpenInstructions} className={`hover:bg-gray-700 text-gray-300 p-2 rounded-lg transition-colors duration-300 w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+            <FaQuestionCircle size={20} className="mr-2" />
+            {!isSidebarCollapsed && <span className="ml-2">How-to?</span>}
           </button>
         </div>
         {/* Sign-Out Button */}
         <div className="mt-4">
           <button
             onClick={() => signOut()}
-            className={`hover:text-red-500 text-gray-300 p-2 rounded-lg transition-colors duration-300 w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : ''}`}
+            className={`hover:bg-gray-700 text-gray-300 p-2 rounded-lg transition-colors duration-300 w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : ''}`}
           >
             <FaSignOutAlt size={20} className="mr-2" />
             {!isSidebarCollapsed && <span className="ml-2">Sign Out</span>}
@@ -150,18 +161,23 @@ export default function ChatInterface() {
       </div>
       {/* Bug Report Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+        <motion.div 
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50"
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          transition={{ duration: 0.3 }}
+        >
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <h2 className="text-xl font-bold mb-4">Report an Issue</h2>
             <input
               type="text"
-              className="w-full p-2 border border-gray-300 rounded mb-4"
+              className="w-full p-2 border border-gray-600 rounded mb-4 bg-gray-100 text-black"
               placeholder="Issue Title"
               value={bugTitle}
               onChange={(e) => setBugTitle(e.target.value)}
             />
             <textarea
-              className="w-full p-2 border border-gray-300 rounded mb-4"
+              className="w-full p-2 border border-gray-600 rounded mb-4 bg-gray-100 text-black"
               placeholder="Describe the issue/bug..."
               value={bugDescription}
               onChange={(e) => setBugDescription(e.target.value)}
@@ -173,11 +189,44 @@ export default function ChatInterface() {
               className="mb-4"
             />
             <div className="flex justify-end">
-              <button onClick={handleBugReportSubmit} className="bg-blue-500 text-white px-4 py-2 rounded mr-2">Submit</button>
-              <button onClick={() => setModalOpen(false)} className="bg-gray-300 text-black px-4 py-2 rounded">Cancel</button>
+              <button 
+                onClick={handleBugReportSubmit} 
+                className="bg-blue-500 text-white px-4 py-2 rounded mr-2 transition-transform duration-300 hover:scale-105"
+              >
+                Submit
+              </button>
+              <button 
+                onClick={() => setModalOpen(false)} 
+                className="bg-gray-300 text-black px-4 py-2 rounded transition-transform duration-300 hover:scale-105"
+              >
+                Cancel
+              </button>
             </div>
           </div>
-        </div>
+        </motion.div>
+      )}
+      {/* Instructions Modal */}
+      {isInstructionsModalOpen && (
+        <motion.div 
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50"
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          transition={{ duration: 0.3 }}
+        >
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <h2 className="text-xl font-bold mb-4">How to Use the Web App</h2>
+            <p className="mb-4">Here are some instructions on how to use the web app...</p>
+            {/* Add more detailed instructions here */}
+            <div className="flex justify-end">
+              <button 
+                onClick={handleCloseInstructions} 
+                className="bg-gray-300 text-black px-4 py-2 rounded transition-transform duration-300 hover:scale-105"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </motion.div>
       )}
     </div>
   );
