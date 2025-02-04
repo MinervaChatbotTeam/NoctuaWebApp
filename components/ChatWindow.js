@@ -1,7 +1,6 @@
-// ChatWindow.js
 import { useState, useEffect } from 'react';
 import ReactMarkdown from "react-markdown";
-import { FaPaperPlane, FaPaperclip } from 'react-icons/fa'; // Importing the paperclip icon
+import { FaPaperPlane, FaPaperclip, FaThumbsUp, FaThumbsDown } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 export default function ChatWindow({ messages, sendMessage }) {
@@ -100,9 +99,10 @@ export default function ChatWindow({ messages, sendMessage }) {
                 }`}
               >
                 <ReactMarkdown className="text-base leading-relaxed text-gray-100">{contentWithoutReferences}</ReactMarkdown>
-                
                 {references}
-
+                {msg.role === 'assistant' && (
+                  <FeedbackButtons messageId={index} /> // Add feedback buttons for assistant messages
+                )}
                 {msg.images && msg.images.length > 0 && (
                   <div className="space-y-6 mt-4">
                     {msg.images.map((img, idx) => (
@@ -177,6 +177,42 @@ export default function ChatWindow({ messages, sendMessage }) {
           <FaPaperPlane size={20} />
         </button>
       </div>
+    </div>
+  );
+}
+
+// FeedbackButtons Component
+function FeedbackButtons({ messageId }) {
+  const [feedback, setFeedback] = useState(null); // Local state for feedback (up, down, or null)
+
+  const handleFeedback = (type) => {
+    setFeedback(type); // Set feedback state
+    console.log(`Feedback for message ${messageId}: ${type}`);
+    // Here you can implement the logic to send feedback to the server
+  };
+
+  return (
+    <div className="flex justify-end mt-2">
+      <button
+        onClick={() => handleFeedback('up')}
+        className={`p-2 rounded-full transition duration-300 transform hover:scale-110 ${
+          feedback === 'up'
+            ? 'text-green-500 hover:text-green-600'
+            : 'text-gray-400 hover:text-gray-500'
+        }`}
+      >
+        <FaThumbsUp />
+      </button>
+      <button
+        onClick={() => handleFeedback('down')}
+        className={`p-2 rounded-full ml-2 transition duration-300 transform hover:scale-110 ${
+          feedback === 'down'
+            ? 'text-red-500 hover:text-red-600'
+            : 'text-gray-400 hover:text-gray-500'
+        }`}
+      >
+        <FaThumbsDown />
+      </button>
     </div>
   );
 }
