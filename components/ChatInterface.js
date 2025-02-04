@@ -4,7 +4,7 @@ import ChatList from './ChatList';
 import ChatWindow from './ChatWindow';
 import { signOut } from 'next-auth/react';
 import apiClient from '@/ApiClient';
-import { FaChevronLeft, FaChevronRight, FaSignOutAlt } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaSignOutAlt, FaBug } from 'react-icons/fa';
 import { GiOwl } from 'react-icons/gi'; // Placeholder logo
 
 export default function ChatInterface() {
@@ -12,6 +12,10 @@ export default function ChatInterface() {
   const [chats, setChats] = useState([]);
   const [messages, setMessages] = useState([]);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [bugTitle, setBugTitle] = useState('');
+  const [bugDescription, setBugDescription] = useState('');
+  const [bugImage, setBugImage] = useState(null);
 
   const toggleSidebar = () => setSidebarCollapsed(!isSidebarCollapsed);
 
@@ -84,6 +88,12 @@ export default function ChatInterface() {
     setMessages((prevMessages) => [...prevMessages, assistantMessage]);
   };
 
+  const handleBugReportSubmit = () => {
+    // Handle the bug report submission logic here
+    console.log(bugTitle, bugDescription, bugImage);
+    setModalOpen(false); // Close the modal after submission
+  };
+
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
@@ -118,6 +128,13 @@ export default function ChatInterface() {
           getChats={getChats}
           isSidebarCollapsed={isSidebarCollapsed} // Corrected prop name
         />
+        {/* Bug Report Button */}
+        <div className="mt-4">
+          <button onClick={() => setModalOpen(true)} className={`hover:text-blue-500 text-gray-300 p-2 rounded-lg transition-colors duration-300 w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+            <FaBug size={20} className="mr-2" />
+            {!isSidebarCollapsed && <span className="ml-2">Report Issue</span>}
+          </button>
+        </div>
         {/* Sign-Out Button */}
         <div className="mt-4">
           <button
@@ -135,6 +152,37 @@ export default function ChatInterface() {
       <div className="flex-1 bg-gray-900 p-4">
         <ChatWindow messages={messages} sendMessage={handleSendMessage} />
       </div>
-    </div>
+      {/* Bug Report Modal */}
+      {isModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <h2 className="text-xl font-bold mb-4">Report an Issue</h2>
+              <input
+                type="text"
+                className="w-full p-2 border border-gray-300 rounded mb-4"
+                placeholder="Issue Title"
+                value={bugTitle}
+                onChange={(e) => setBugTitle(e.target.value)}
+              />
+              <textarea
+                className="w-full p-2 border border-gray-300 rounded mb-4"
+                placeholder="Describe the issue/bug..."
+                value={bugDescription}
+                onChange={(e) => setBugDescription(e.target.value)}
+              />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setBugImage(e.target.files[0])}
+                className="mb-4"
+              />
+              <div className="flex justify-end">
+                <button onClick={handleBugReportSubmit} className="bg-blue-500 text-white px-4 py-2 rounded mr-2">Submit</button>
+                <button onClick={() => setModalOpen(false)} className="bg-gray-300 text-black px-4 py-2 rounded">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
   );
 }
