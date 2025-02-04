@@ -177,6 +177,7 @@ export default function ChatWindow({ messages, sendMessage }) {
           <FaPaperPlane size={20} />
         </button>
       </div>
+      <p className="text-gray-500 text-xs mt-1 text-center">AI can make mistakes, for reference only.</p>
     </div>
   );
 }
