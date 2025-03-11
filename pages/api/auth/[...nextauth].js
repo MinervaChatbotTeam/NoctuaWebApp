@@ -1,16 +1,16 @@
+import { doc, getDoc, setDoc } from "firebase/firestore"; // Import Firestore functions
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import { doc, getDoc, setDoc } from "firebase/firestore";  // Import Firestore functions
-import { db } from "../../../database/firebase";  // Adjust this to point to your Firebase config
+import { db } from "../../../database/firebase"; // Adjust this to point to your Firebase config
 
 const allowedEmails = [
   "alaa@uni.minerva.edu", "a.soliman@uni.minerva.edu", 
   "enes@uni.minerva.edu", "aterrana@minerva.edu", 
   "jacopo@uni.minerva.edu", "laryssa@uni.minerva.edu", 
-  "psterne@minerva.edu", "rlevitt@minerva.edu"
+  "psterne@minerva.edu", "rlevitt@minerva.edu", "shinnosuke.uesaka@uni.minerva.edu"
 ];
 
-export default NextAuth({
+export const authOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -60,4 +60,6 @@ export default NextAuth({
   jwt: {
     secret: process.env.NEXTAUTH_SECRET,
   },
-});
+};
+
+export default NextAuth(authOptions);

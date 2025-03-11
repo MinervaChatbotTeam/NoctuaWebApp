@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
-import ChatList from './ChatList';
-import ChatWindow from './ChatWindow';
-import { signOut } from 'next-auth/react';
-import apiClient from '@/ApiClient';
-import { FaChevronLeft, FaChevronRight, FaSignOutAlt, FaBug, FaQuestionCircle } from 'react-icons/fa';
-import { GiOwl } from 'react-icons/gi';
 import { motion } from 'framer-motion';
+import { signOut } from 'next-auth/react';
+import { useEffect, useState } from 'react';
+import { FaBug, FaChevronLeft, FaChevronRight, FaQuestionCircle, FaSignOutAlt } from 'react-icons/fa';
+import { GiOwl } from 'react-icons/gi';
+import apiClient from '../ApiClient';
+import ConversationList from './ConversationList';
+import ConversationWindow from './ConversationWindow';
 
-export default function ChatInterface() {
-  const [activeChat, setActiveChat] = useState(null);
-  const [chats, setChats] = useState([]);
+export default function ConversationInterface() {
+  const [activeConversation, setActiveConversation] = useState(null);
+  const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
@@ -20,78 +20,86 @@ export default function ChatInterface() {
 
   const toggleSidebar = () => setSidebarCollapsed(!isSidebarCollapsed);
 
-  const getChats = async () => {
-    const response = await apiClient.getAllConversations(activeChat);
-    setChats(
-      response.conversations
-        .map((chat) => {
-          const lastMessageTimestamp = chat.messages.reduce((latest, message) => {
-            const messageTime = new Date(message.timestamp).getTime();
-            return messageTime > latest ? messageTime : latest;
-          }, 0);
+  const getConversations = async () => {
+    try {
+      const response = await apiClient.getConversations();
+      if (response.conversations) {
+        setConversations(
+          response.conversations
+            .map((conversation) => {
+              const lastMessageTimestamp = conversation.messages && conversation.messages.length > 0 
+                ? conversation.messages.reduce((latest, message) => {
+                    const messageTime = new Date(message.timestamp).getTime();
+                    return messageTime > latest ? messageTime : latest;
+                  }, 0)
+                : new Date(conversation.updated_at).getTime();
 
-          return {
-            id: chat.id,
-            title: chat.conversation_id,
-            lastMessageTimestamp
-          };
-        })
-        .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp)
-    );
+              return {
+                id: conversation.id,
+                title: conversation.title || `Conversation ${conversation.id}`,
+                lastMessageTimestamp
+              };
+            })
+            .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp)
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    }
   };
 
   useEffect(() => {
-    getChats();
+    getConversations();
   }, []);
 
   useEffect(() => {
-    if (activeChat) {
+    if (activeConversation) {
       const fetchMessages = async () => {
-        const chatMessages = await apiClient.getMessages(activeChat);
-        setMessages(chatMessages.messages);
+        try {
+          const response = await apiClient.getMessages(activeConversation);
+          setMessages(response.messages || []);
+        } catch (error) {
+          console.error('Error fetching messages:', error);
+        }
       };
       fetchMessages();
     } else {
       setMessages([]);
     }
-  }, [activeChat]);
+  }, [activeConversation]);
 
   const handleSendMessage = async (message) => {
     if (message.trim()) {
+      // Add user message to UI immediately
       setMessages((prevMessages) => [
         ...prevMessages,
-        { role: 'user', content: message },
+        { role: 'user', content: message, timestamp: new Date().toISOString() },
       ]);
 
-      if (activeChat) {
-        const assistantMessage = await apiClient.sendMessage(activeChat, message);
-        if (assistantMessage.error != undefined) {
-          alert("Error happened while sending the message");
-          window.location.reload();
-          return;
-        }
-        setMessages((prevMessages) => [...prevMessages, assistantMessage]);
-      } else {
-        await addNewChat(message);
+      try {
+        if (activeConversation) {
+          // Send message to existing conversation
+          const assistantMessage = await apiClient.sendMessage(activeConversation, message);
+          console.log('assistantMessage')
+          console.log(assistantMessage)
+          setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+        } else {
+          // Create a new conversation first
+          const conversationResponse = await apiClient.createConversation();
+          const newConversationId = conversationResponse.conversationId;
+          
+          // Then send the message to the new conversation
+          const assistantMessage = await apiClient.sendMessage(newConversationId, message);
+          
+          // Update active conversation and refresh conversation list
+          setActiveConversation(newConversationId);
+          getConversations();
+        } 
+      } catch (error) {
+        console.error('Error sending message:', error);
+        alert("Error happened while sending the message");
       }
     }
-  };
-
-  const addNewChat = async (message) => {
-    const newChatId = (chats.length + 1).toString();
-    const response = await apiClient.createChat(message, `Chat ${newChatId}`);
-    if (response.error != undefined) {
-      alert("Error happened while sending the message");
-      window.location.reload();
-      return;
-    }
-    const newChat = { id: response.conversationid, title: `Chat ${newChatId}` };
-    setChats([...chats, newChat]);
-    setActiveChat(response.conversationid);
-    setMessages([{ role: 'user', content: message }]);
-    const assistantResponse = await apiClient.getMessages(response.conversationid);
-    const assistantMessage = assistantResponse.messages[1];
-    setMessages((prevMessages) => [...prevMessages, assistantMessage]);
   };
 
   const handleBugReportSubmit = () => {
@@ -124,11 +132,11 @@ export default function ChatInterface() {
             {isSidebarCollapsed ? <FaChevronRight size={20} /> : <FaChevronLeft size={20} />}
           </button>
         </div>
-        <ChatList
-          chats={chats}
-          setActiveChat={setActiveChat}
-          addNewChat={() => setActiveChat(null)}
-          getChats={getChats}
+        <ConversationList
+          conversations={conversations}
+          setActiveConversation={setActiveConversation}
+          addNewConversation={() => setActiveConversation(null)}
+          getConversations={getConversations}
           isSidebarCollapsed={isSidebarCollapsed}
         />
         {/* Bug Report Button */}
@@ -157,7 +165,7 @@ export default function ChatInterface() {
         </div>
       </div>
       <div className="flex-1 bg-gray-900 p-4">
-        <ChatWindow messages={messages} sendMessage={handleSendMessage} />
+        <ConversationWindow messages={messages} sendMessage={handleSendMessage} />
       </div>
       {/* Bug Report Modal */}
       {isModalOpen && (

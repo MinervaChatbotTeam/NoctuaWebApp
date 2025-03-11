@@ -1,95 +1,95 @@
-import apiClient from '@/ApiClient';
+import { motion } from 'framer-motion';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import { FiMessageSquare } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import apiClient from '../ApiClient';
 
-export default function ChatList({ chats, setActiveChat, addNewChat, getChats, isSidebarCollapsed }) {
-  const handleDeleteChat = async (chatId) => {
-    const deleteButton = document.getElementById(`delete-${chatId}`);
+export default function ConversationList({ conversations, setActiveConversation, addNewConversation, getConversations, isSidebarCollapsed }) {
+  const handleDeleteConversation = async (conversationId) => {
+    const deleteButton = document.getElementById(`delete-${conversationId}`);
     deleteButton.disabled = true;
 
-    await apiClient.deleteChat(chatId);
-    getChats();
-    setActiveChat(null);
+    await apiClient.deleteConversation(conversationId);
+    getConversations();
+    setActiveConversation(null);
 
     setTimeout(() => {
       deleteButton.disabled = false;
     }, 2000);
   };
 
-  const categorizeChats = (chats) => {
+  const categorizeConversations = (conversations) => {
     const now = new Date();
-    const categorizedChats = {
+    const categorizedConversations = {
       today: [],
       yesterday: [],
       lastWeek: [],
       past: []
     };
   
-    chats.forEach(chat => {
-      const lastMessageDate = new Date(chat.lastMessageTimestamp); // Use the lastMessageTimestamp
+    conversations.forEach(conversation => {
+      const lastMessageDate = new Date(conversation.lastMessageTimestamp);
       const diffTime = now - lastMessageDate;
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   
       if (diffDays === 0) {
-        categorizedChats.today.push(chat);
+        categorizedConversations.today.push(conversation);
       } else if (diffDays === 1) {
-        categorizedChats.yesterday.push(chat);
+        categorizedConversations.yesterday.push(conversation);
       } else if (diffDays <= 7) {
-        categorizedChats.lastWeek.push(chat);
+        categorizedConversations.lastWeek.push(conversation);
       } else {
-        categorizedChats.past.push(chat);
+        categorizedConversations.past.push(conversation);
       }
     });
   
-    return categorizedChats;
+    return categorizedConversations;
   };
 
-  const categorizedChats = categorizeChats(chats);
+  const categorizedConversations = categorizeConversations(conversations);
 
   return (
     <div className="text-white flex flex-col flex-grow overflow-hidden">
       <button
-        onClick={addNewChat}
+        onClick={addNewConversation}
         className={`flex items-center bg-blue-600 text-white p-2 rounded-lg mb-4 hover:bg-blue-700 transition duration-300 ${
           isSidebarCollapsed ? 'justify-center' : ''
         }`}
       >
         <FaPlus />
-        {!isSidebarCollapsed && <span className="ml-2">New Chat</span>}
+        {!isSidebarCollapsed && <span className="ml-2">New Conversation</span>}
       </button>
       <div className="space-y-4">
-        {Object.entries(categorizedChats).map(([category, chats]) => {
-          if (chats.length === 0) return null;
+        {Object.entries(categorizedConversations).map(([category, conversations]) => {
+          if (conversations.length === 0) return null;
   
           return (
             <div key={category}>
               <h3 className="text-sm font-medium text-gray-400 mb-1 text-center">{category.charAt(0).toUpperCase() + category.slice(1)}</h3>
               <ul className="space-y-2 flex-1 overflow-auto">
-                {chats.map((chat) => {
-                  const chatNumber = chat.title.replace(/\D/g, '') || chat.title;
+                {conversations.map((conversation) => {
+                  const conversationNumber = conversation.title.replace(/\D/g, '') || conversation.title;
   
                   return (
                     <motion.li
-                      key={chat.id}
+                      key={conversation.id}
                       initial={{ opacity: 0, y: -5 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
                       className="flex items-center p-2 rounded-lg hover:bg-gray-700 transition duration-200 cursor-pointer"
-                      onClick={() => setActiveChat(chat.id)}
+                      onClick={() => setActiveConversation(conversation.id)}
                     >
                       <FiMessageSquare size={18} />
                       {isSidebarCollapsed ? (
-                        <span className="ml-1 text-sm">{chatNumber}</span>
+                        <span className="ml-1 text-sm">{conversationNumber}</span>
                       ) : (
                         <>
-                          <span className="flex-1 ml-2 text-sm truncate">{chat.title}</span>
+                          <span className="flex-1 ml-2 text-sm truncate">{conversation.title}</span>
                           <button
-                            id={`delete-${chat.id}`}
+                            id={`delete-${conversation.id}`}
                             className="p-1 rounded-lg ml-2 transition duration-300 hover:text-red-500"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteChat(chat.id);
+                              handleDeleteConversation(conversation.id);
                             }}
                           >
                             <FaTrash />
