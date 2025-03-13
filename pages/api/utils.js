@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { LLMEngine } from './engine';
-import { query } from 'firebase/firestore';
 
 export async function chat_completer(messages) {
     /*
@@ -33,27 +32,28 @@ export async function chat_completer(messages) {
     try {
 
         // Sending a request to Runpod with the chat to complete
-        var response = await LLMEngine("/ask", user_query, chat_history, "")
-        console.log(response)
-        var response = response.body
-
-        // Log the full API response for debugging
-        console.log('Lambda response:', response);
-
-        // Check if 'choices' exist and has content
-        if (response) {
+        var result = await LLMEngine("/ask", user_query, chat_history, "")
+        console.log("Full RunPod response:", result)
+        
+        // Extract the body from the output property
+        if (result && result.output && result.output.body) {
+            var response = result.output.body
+            
+            // Log the extracted API response for debugging
+            console.log('Extracted RunSync API response:', response);
+            
             return response;
         } else {
-            console.error('Unexpected response format:', JSON.stringify(response));
+            console.error('Unexpected response format:', JSON.stringify(result));
             throw new Error('Unexpected response format from Runpod API.');
         }
 
     } catch (error) {
-        console.error('Error calling Lambda Function:', error.message);
+        console.error('Error calling RunSync API:', error.message);
 
         // Log the full error response for further debugging
         if (error.response) {
-            console.error('Lambda error response:', JSON.stringify(error.response.data));
+            console.error('RunSync API error response:', JSON.stringify(error.response.data));
         }
 
         throw new Error('Failed to complete the chat. Please try again later.');

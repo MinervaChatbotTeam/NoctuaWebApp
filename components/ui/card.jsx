@@ -1,6 +1,6 @@
-import * as React from "react"
 import { cva } from "class-variance-authority";
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "../../lib/utils";
 
 const cardVariants = cva("w-full relative transition-all duration-200", {
   variants: {
@@ -255,4 +255,4 @@ const Card = React.forwardRef(({ className, variant, title, description, childre
 })
 Card.displayName = "Card"
 
-export { Card, CardContent, cardVariants }
+export { Card, CardContent, cardVariants };

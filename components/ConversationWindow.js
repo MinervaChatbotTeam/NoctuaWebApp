@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import ReactMarkdown from "react-markdown";
+import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import {
   FaThumbsUp,
   FaThumbsDown,
@@ -7,25 +7,25 @@ import {
   FaRobot,
   FaUser,
 } from 'react-icons/fa';
-import { motion } from 'framer-motion';
-import AiInput from './ui/ai-input'; // Import the improved AiInput component
+import ReactMarkdown from "react-markdown";
+import AiInput from './ui/ai-input'; 
 import { Card, CardContent } from './ui/card.jsx';
 
-export default function ChatWindow({ messages, sendMessage }) {
+export default function ConversationWindow({ messages, sendMessage, loading }) {
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [feedbackStates, setFeedbackStates] = useState({});
 
   const handleSend = async () => {
     if (message.trim()) {
-      setLoading(true);
+      setIsLoading(true);
       const currentMessage = message;
       setMessage('');
       await sendMessage(currentMessage, selectedFile);
       setSelectedFile(null);
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -98,8 +98,38 @@ export default function ChatWindow({ messages, sendMessage }) {
         })}
       </div>
     );
-
+    
     return { contentWithoutReferences, references };
+  };
+
+  const FeedbackButtons = ({ messageId }) => {
+    return (
+      <>
+        <button
+          onClick={() => handleMessageFeedback(messageId, 'up')}
+          className={`p-1 rounded-full transition duration-300 border ${
+            feedbackStates[messageId] === 'up'
+              ? 'text-green-400 border-green-400/30 bg-green-400/5'
+              : 'text-gray-400 border-white/5 hover:border-white/10 hover:bg-gray-700/20 hover:text-gray-300'
+          }`}
+          title="Thumbs up"
+        >
+          <FaThumbsUp className="text-xs" />
+        </button>
+        
+        <button
+          onClick={() => handleMessageFeedback(messageId, 'down')}
+          className={`p-1 rounded-full transition duration-300 border ${
+            feedbackStates[messageId] === 'down'
+              ? 'text-red-400 border-red-400/30 bg-red-400/5'
+              : 'text-gray-400 border-white/5 hover:border-white/10 hover:bg-gray-700/20 hover:text-gray-300'
+          }`}
+          title="Thumbs down"
+        >
+          <FaThumbsDown className="text-xs" />
+        </button>
+      </>
+    );
   };
 
   const renderTypingIndicator = () => (
@@ -233,7 +263,7 @@ export default function ChatWindow({ messages, sendMessage }) {
                     <CardContent className="p-3 sm:p-4">
                       <div className="relative">
                         <ReactMarkdown className="text-sm sm:text-base leading-relaxed">
-                          {contentWithoutReferences}
+                          {contentWithoutReferences || msg.content}
                         </ReactMarkdown>
                         {references}
 
@@ -270,29 +300,7 @@ export default function ChatWindow({ messages, sendMessage }) {
                 {!isUser && (
                   <div className="w-11/12 sm:w-4/5 mx-auto mt-2 flex justify-end">
                     <div className="flex items-center space-x-1.5 bg-gray-800/30 rounded-full px-2 py-0.5 backdrop-blur-sm">
-                      <button
-                        onClick={() => handleMessageFeedback(index, 'up')}
-                        className={`p-1 rounded-full transition duration-300 border ${
-                          feedbackStates[index] === 'up'
-                            ? 'text-green-400 border-green-400/30 bg-green-400/5'
-                            : 'text-gray-400 border-white/5 hover:border-white/10 hover:bg-gray-700/20 hover:text-gray-300'
-                        }`}
-                        title="Thumbs up"
-                      >
-                        <FaThumbsUp className="text-xs" />
-                      </button>
-                      
-                      <button
-                        onClick={() => handleMessageFeedback(index, 'down')}
-                        className={`p-1 rounded-full transition duration-300 border ${
-                          feedbackStates[index] === 'down'
-                            ? 'text-red-400 border-red-400/30 bg-red-400/5'
-                            : 'text-gray-400 border-white/5 hover:border-white/10 hover:bg-gray-700/20 hover:text-gray-300'
-                        }`}
-                        title="Thumbs down"
-                      >
-                        <FaThumbsDown className="text-xs" />
-                      </button>
+                      <FeedbackButtons messageId={index} />
                       
                       <button
                         onClick={() => handleCopy(msg.content)}
@@ -319,7 +327,7 @@ export default function ChatWindow({ messages, sendMessage }) {
           message={message}
           setMessage={setMessage}
           handleSend={handleSend}
-          loading={loading}
+          loading={loading || isLoading}
           searchActive={searchActive}
           setSearchActive={setSearchActive}
           onFileChange={handleFileChange}

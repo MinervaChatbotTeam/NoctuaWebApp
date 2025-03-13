@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
-import ChatList from './ChatList';
-import ChatWindow from './ChatWindow';
-import { signOut } from 'next-auth/react';
-import apiClient from '@/ApiClient';
-import { FaChevronLeft, FaChevronRight, FaSignOutAlt, FaBug, FaQuestionCircle } from 'react-icons/fa';
-import { GiOwl } from 'react-icons/gi';
 import { motion, AnimatePresence } from 'framer-motion';
+import { signOut } from 'next-auth/react';
+import { useEffect, useState } from 'react';
+import { FaBug, FaChevronLeft, FaChevronRight, FaQuestionCircle, FaSignOutAlt } from 'react-icons/fa';
+import { GiOwl } from 'react-icons/gi';
+import apiClient from '../ApiClient';
+import ConversationList from './ConversationList';
+import ConversationWindow from './ConversationWindow';
 
-export default function ChatInterface() {
-  const [activeChat, setActiveChat] = useState(null);
-  const [chats, setChats] = useState([]);
+export default function ConversationInterface() {
+  const [activeConversation, setActiveConversation] = useState(null);
+  const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
@@ -21,46 +21,50 @@ export default function ChatInterface() {
 
   const toggleSidebar = () => setSidebarCollapsed(!isSidebarCollapsed);
 
-  const getChats = async () => {
+  const getConversations = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.getAllConversations(activeChat);
-      setChats(
-        response.conversations
-          .map((chat) => {
-            const lastMessageTimestamp = chat.messages.reduce((latest, message) => {
-              const messageTime = new Date(message.timestamp).getTime();
-              return messageTime > latest ? messageTime : latest;
-            }, 0);
+      const response = await apiClient.getConversations();
+      if (response.conversations) {
+        setConversations(
+          response.conversations
+            .map((conversation) => {
+              const lastMessageTimestamp = conversation.messages && conversation.messages.length > 0 
+                ? conversation.messages.reduce((latest, message) => {
+                    const messageTime = new Date(message.timestamp).getTime();
+                    return messageTime > latest ? messageTime : latest;
+                  }, 0)
+                : new Date(conversation.updated_at).getTime();
 
-            return {
-              id: chat.id,
-              title: chat.conversation_id,
-              lastMessageTimestamp
-            };
-          })
-          .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp)
-      );
+              return {
+                id: conversation.id,
+                title: conversation.title || `Conversation ${conversation.id}`,
+                lastMessageTimestamp
+              };
+            })
+            .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp)
+        );
+      }
     } catch (error) {
-      console.error("Error fetching chats:", error);
+      console.error('Error fetching conversations:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    getChats();
+    getConversations();
   }, []);
 
   useEffect(() => {
-    if (activeChat) {
+    if (activeConversation) {
       const fetchMessages = async () => {
         setLoading(true);
         try {
-          const chatMessages = await apiClient.getMessages(activeChat);
-          setMessages(chatMessages.messages);
+          const response = await apiClient.getMessages(activeConversation);
+          setMessages(response.messages || []);
         } catch (error) {
-          console.error("Error fetching messages:", error);
+          console.error('Error fetching messages:', error);
         } finally {
           setLoading(false);
         }
@@ -69,19 +73,21 @@ export default function ChatInterface() {
     } else {
       setMessages([]);
     }
-  }, [activeChat]);
+  }, [activeConversation]);
 
   const handleSendMessage = async (message, file = null) => {
     if (message.trim()) {
+      // Add user message to UI immediately
       setLoading(true);
       setMessages((prevMessages) => [
         ...prevMessages,
-        { role: 'user', content: message },
+        { role: 'user', content: message, timestamp: new Date().toISOString() },
       ]);
 
       try {
-        if (activeChat) {
-          const assistantMessage = await apiClient.sendMessage(activeChat, message, file);
+        if (activeConversation) {
+          // Send message to existing conversation
+          const assistantMessage = await apiClient.sendMessage(activeConversation, message, file);
           if (assistantMessage.error !== undefined) {
             alert("Error happened while sending the message");
             window.location.reload();
@@ -89,34 +95,23 @@ export default function ChatInterface() {
           }
           setMessages((prevMessages) => [...prevMessages, assistantMessage]);
         } else {
-          await addNewChat(message, file);
-        }
+          // Create a new conversation first
+          const conversationResponse = await apiClient.createConversation();
+          const newConversationId = conversationResponse.conversationId;
+          
+          // Then send the message to the new conversation
+          const assistantMessage = await apiClient.sendMessage(newConversationId, message, file);
+          
+          // Update active conversation and refresh conversation list
+          setActiveConversation(newConversationId);
+          getConversations();
+        } 
       } catch (error) {
-        console.error("Error sending message:", error);
+        console.error('Error sending message:', error);
+        alert("Error happened while sending the message");
       } finally {
         setLoading(false);
       }
-    }
-  };
-
-  const addNewChat = async (message, file = null) => {
-    try {
-      const newChatId = (chats.length + 1).toString();
-      const response = await apiClient.createChat(message, `Chat ${newChatId}`, file);
-      if (response.error !== undefined) {
-        alert("Error happened while sending the message");
-        window.location.reload();
-        return;
-      }
-      const newChat = { id: response.conversationid, title: `Chat ${newChatId}` };
-      setChats([...chats, newChat]);
-      setActiveChat(response.conversationid);
-      setMessages([{ role: 'user', content: message }]);
-      const assistantResponse = await apiClient.getMessages(response.conversationid);
-      const assistantMessage = assistantResponse.messages[1];
-      setMessages((prevMessages) => [...prevMessages, assistantMessage]);
-    } catch (error) {
-      console.error("Error creating new chat:", error);
     }
   };
 
@@ -183,14 +178,13 @@ export default function ChatInterface() {
             {isSidebarCollapsed ? <FaChevronRight size={14} /> : <FaChevronLeft size={14} />}
           </motion.button>
         </div>
-
-        {/* Chat list */}
+        {/* Conversation list */}
         <div className="flex-1 overflow-hidden">
-          <ChatList
-            chats={chats}
-            setActiveChat={setActiveChat}
-            addNewChat={() => setActiveChat(null)}
-            getChats={getChats}
+          <ConversationList
+            conversations={conversations}
+            setActiveConversation={setActiveConversation}
+            addNewConversation={() => setActiveConversation(null)}
+            getConversations={getConversations}
             isSidebarCollapsed={isSidebarCollapsed}
           />
         </div>
@@ -244,7 +238,7 @@ export default function ChatInterface() {
       
       {/* Main content */}
       <div className="flex-1 bg-gradient-to-b from-gray-900 via-gray-900 to-black">
-        <ChatWindow 
+        <ConversationWindow 
           messages={messages} 
           sendMessage={handleSendMessage} 
           loading={loading}

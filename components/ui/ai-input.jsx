@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import Image from "next/image"
-import { AnimatePresence, motion } from "framer-motion"
-import { Globe, Paperclip, Plus, Send } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion";
+import { Globe, Paperclip, Plus, Send } from "lucide-react";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { cn } from "@/lib/utils"
-import { Textarea } from "@/components/ui/textarea"
+import { cn } from "../../lib/utils";
+import { Textarea } from "./textarea";
 
 function useAutoResizeTextarea({
   minHeight,

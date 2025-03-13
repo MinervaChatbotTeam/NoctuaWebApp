@@ -1,33 +1,39 @@
-const { Lambda } = require("aws-sdk");
-
-// Initialize the Lambda client
-const lambda = new Lambda({
-  region: process.env.AWS_REGION,
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-});
-
 // Function to invoke the engine function
 export const LLMEngine = async (command, query, chat_history, image_url) => {
-  const params = {
-    FunctionName: 'webapp_engine',
-    InvocationType: 'RequestResponse',         
-    Payload: JSON.stringify({
-      "pipeline": command, 
+  const payload = {
+    "input": {
+      //"pipeline": command,  /ask is default
       "query": query,
-      "user": "user1234",
-      "chat_history": chat_history,  
-      "image_url": image_url,
-      "channel": "channel_id",  
-      "ts": "timestamp_here"
-    })    
+      "user": "testuser",
+      "messages": chat_history
+    }
   };
+  console.log(payload);
+
+  // Remove image_url from payload if it's empty
+  if (image_url) {
+    payload.input.image_url = image_url;
+  }
 
   try {
-    const result = await lambda.invoke(params).promise();
-    return JSON.parse(result.Payload);
+    const response = await fetch(`https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/runsync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.RUNPOD_API_KEY}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`RunSync API error: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result;
   } catch (error) {
-    console.error('Error invoking Lambda:', error);
+    console.error('Error invoking RunSync API:', error);
+    throw error;
   }
 };
 
@@ -36,17 +42,8 @@ export const LLMEngine = async (command, query, chat_history, image_url) => {
     // Call the function
     const trial =async ()=>{
 
-    console.log((await LLMEngine({
-      "pipeline": "/ask", 
-      "query": "What is the capital of France?",
-      "user": "user1234",
-      "chat_history": [],  
-      "image_url": "https://example.com/image.jpg",
-      "channel": "channel_id",  
-      "ts": "timestamp_here"  
-    })).body[0].text.text);
+    console.log((await LLMEngine("/ask", "What is the capital of France?", [], "")).body);
 
     }
     trial()
-  
 */
