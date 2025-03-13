@@ -1,28 +1,44 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import {
-  FaGlobe,
-  FaPaperPlane,
-  FaPaperclip,
-  FaRegCopy,
-  FaThumbsDown,
   FaThumbsUp,
+  FaThumbsDown,
+  FaRegCopy,
+  FaRobot,
+  FaUser,
 } from 'react-icons/fa';
 import ReactMarkdown from "react-markdown";
+import AiInput from './ui/ai-input'; 
+import { Card, CardContent } from './ui/card.jsx';
 
-export default function ConversationWindow({ messages, sendMessage }) {
+export default function ConversationWindow({ messages, sendMessage, loading }) {
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [searchActive, setSearchActive] = useState(false); // <-- Toggles the search button state
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [feedbackStates, setFeedbackStates] = useState({});
 
   const handleSend = async () => {
     if (message.trim()) {
-      setLoading(true);
+      setIsLoading(true);
       const currentMessage = message;
       setMessage('');
-      await sendMessage(currentMessage);
-      setLoading(false);
+      await sendMessage(currentMessage, selectedFile);
+      setSelectedFile(null);
+      setIsLoading(false);
     }
+  };
+
+  const handleFileChange = (file) => {
+    setSelectedFile(file);
+  };
+
+  const handleMessageFeedback = (messageId, type) => {
+    setFeedbackStates(prev => ({
+      ...prev,
+      [messageId]: type === prev[messageId] ? null : type // Toggle if same button is clicked
+    }));
+    console.log(`Feedback for message ${messageId}: ${type}`);
   };
 
   useEffect(() => {
@@ -42,111 +58,118 @@ export default function ConversationWindow({ messages, sendMessage }) {
     }
   };
 
-  const renderUserMessage = (msg, index) => {
-    return (
-      <div key={index} className="flex flex-col w-full">
-        <motion.div
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          className="w-4/5 mx-auto p-4 bg-blue-600 text-white rounded-xl shadow-md"
-        >
-          <ReactMarkdown className="text-base leading-relaxed text-gray-100">
-            {msg.content}
-          </ReactMarkdown>
-        </motion.div>
-      </div>
-    );
-  };
+  const renderReferences = (content) => {
+    const referenceRegex = /<(.+?)\|(.+?)>/g;
+    const unwantedTextRegex = /(\*\*|\*|\bReferences\b|pages:|,)+/gi;
+    const matches = [...content.matchAll(referenceRegex)];
 
-  const renderAssistantMessage = (msg, index) => {
-    // Process resources if they exist
-    const resourcesComponent = msg.metadata.resources && msg.metadata.resources.length > 0 ? (
+    let contentWithoutReferences = content
+      .replace(referenceRegex, '')
+      .replace(unwantedTextRegex, '')
+      .replace(/,\s*,/g, '')
+      .replace(/^\s*,|,\s*$/g, '')
+      .trim();
+
+    if (matches.length === 0) {
+      return { contentWithoutReferences, references: null };
+    }
+
+    const references = (
       <div className="flex flex-wrap space-x-2 mt-2">
-        {msg.metadata.resources.map((resource, idx) => (
-          <div key={idx} className="relative group inline-block">
-            <a
-              href={resource.source}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center w-6 h-6 bg-gray-600 text-white text-sm font-bold rounded-full cursor-pointer hover:bg-blue-500 transition-colors"
-            >
-              {idx + 1}
-            </a>
-            <div
-              className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded-md p-2 mt-2 z-10 w-max max-w-sm shadow-lg"
-            >
-              <div className="font-bold">{resource.title}</div>
-              <div className="text-gray-300">{resource.h1} - {resource.h2}</div>
-              <div className="mt-1 text-gray-400 text-xs">{resource.text.substring(0, 150)}...</div>
+        {matches.map((match, index) => {
+          const [_, url, label] = match;
+          return (
+            <div key={index} className="relative group inline-block">
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-6 h-6 bg-blue-600 text-white text-sm font-bold rounded-full cursor-pointer hover:bg-blue-500 transition-colors border border-white/20"
+              >
+                {index + 1}
+              </a>
+              <div
+                className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded-md p-2 mt-2 z-10 w-max max-w-sm shadow-lg border border-white/10"
+              >
+                {label}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-    ) : null;
-
-    // Process images if they exist
-    const imagesComponent = msg.metadata.images && msg.metadata.images.length > 0 ? (
-      <div className="space-y-6 mt-4">
-        {msg.metadata.images.map((img, idx) => (
-          <div
-            key={idx}
-            className="overflow-hidden rounded-lg shadow-md border border-gray-700 w-3/5 mx-auto"
-          >
-            <img
-              src={img}
-              alt="Chat Image"
-              className="w-full h-auto object-cover"
-            />
-          </div>
-        ))}
-      </div>
-    ) : null;
-
-    return (
-      <div key={index} className="flex flex-col w-full">
-        {/* The message container */}
-        <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          className="w-4/5 mx-auto p-4 text-white"
-        >
-          <ReactMarkdown className="text-base leading-relaxed text-gray-100">
-            {msg.content}
-          </ReactMarkdown>
-          {resourcesComponent}
-          {imagesComponent}
-        </motion.div>
-
-        {/* Feedback + Copy buttons */}
-        <div className="w-4/5 mx-auto mt-2 flex justify-end">
-          <div
-            className="
-              flex items-center space-x-1 
-              bg-gray-800/70 border border-gray-600 
-              text-gray-300 rounded-full px-2 py-1
-              backdrop-blur-sm
-            "
-          >
-            <FeedbackButtons messageId={index} />
-
-            {/* Copy button */}
-            <button
-              onClick={() => handleCopy(msg.content)}
-              className="p-1 rounded-full transition duration-300 transform hover:scale-110 hover:text-gray-100"
-              title="Copy assistant message"
-            >
-              <FaRegCopy />
-            </button>
-          </div>
-        </div>
+          );
+        })}
       </div>
     );
+    
+    return { contentWithoutReferences, references };
   };
+
+  const FeedbackButtons = ({ messageId }) => {
+    return (
+      <>
+        <button
+          onClick={() => handleMessageFeedback(messageId, 'up')}
+          className={`p-1 rounded-full transition duration-300 border ${
+            feedbackStates[messageId] === 'up'
+              ? 'text-green-400 border-green-400/30 bg-green-400/5'
+              : 'text-gray-400 border-white/5 hover:border-white/10 hover:bg-gray-700/20 hover:text-gray-300'
+          }`}
+          title="Thumbs up"
+        >
+          <FaThumbsUp className="text-xs" />
+        </button>
+        
+        <button
+          onClick={() => handleMessageFeedback(messageId, 'down')}
+          className={`p-1 rounded-full transition duration-300 border ${
+            feedbackStates[messageId] === 'down'
+              ? 'text-red-400 border-red-400/30 bg-red-400/5'
+              : 'text-gray-400 border-white/5 hover:border-white/10 hover:bg-gray-700/20 hover:text-gray-300'
+          }`}
+          title="Thumbs down"
+        >
+          <FaThumbsDown className="text-xs" />
+        </button>
+      </>
+    );
+  };
+
+  const renderTypingIndicator = () => (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="w-11/12 sm:w-4/5 mx-auto mt-4"
+    >
+      <Card className="bg-gray-800/30 border-white/10 backdrop-blur-sm p-2 rounded-lg">
+        <CardContent className="p-3">
+          <div className="flex items-center space-x-3 text-blue-300">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 rounded-full shadow-md border border-white/10">
+              <FaRobot className="text-white text-xs" />
+            </div>
+            <div className="flex space-x-1.5">
+              <motion.div
+                className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
+                animate={{ y: [0, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 1.5, delay: 0 }}
+              />
+              <motion.div
+                className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
+                animate={{ y: [0, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
+              />
+              <motion.div
+                className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
+                animate={{ y: [0, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}
+              />
+            </div>
+            <span className="text-sm font-light">Noctua is thinking...</span>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
 
   return (
-    <div className="relative bg-gray-900 text-white h-full p-4 flex flex-col">
+    <div className="relative bg-gray-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-gray-900 to-black text-white h-full p-4 flex flex-col">
       {/* If no messages yet, show splash screen */}
       {messages.length === 0 && (
         <motion.div
@@ -156,8 +179,39 @@ export default function ConversationWindow({ messages, sendMessage }) {
           className="flex flex-col items-center justify-center flex-grow"
         >
           <div className="text-4xl font-bold text-blue-400 mb-4">Ask Noctua!</div>
-          <div className="text-lg text-gray-500">
+          <div className="text-lg text-gray-300 mb-6">
             Examples: "Explain algorithms", "What is AI?"
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-3xl mt-4">
+            {/* Cards with more subtle styling, no plus variant */}
+            <Card className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-white/10 hover:from-blue-900/30 hover:to-purple-900/30 backdrop-blur-sm transition-all cursor-pointer hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] rounded-lg">
+              <CardContent>
+                <h3 className="text-blue-300 font-medium mb-2">Explain quantum computing</h3>
+                <p className="text-gray-300 text-sm">Learn about qubits and quantum states</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-indigo-900/20 to-pink-900/20 border-white/10 hover:from-indigo-900/30 hover:to-pink-900/30 backdrop-blur-sm transition-all cursor-pointer hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] rounded-lg">
+              <CardContent>
+                <h3 className="text-indigo-300 font-medium mb-2">Write a poem about stars</h3>
+                <p className="text-gray-300 text-sm">Get creative with celestial themes</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-cyan-900/20 to-blue-900/20 border-white/10 hover:from-cyan-900/30 hover:to-blue-900/30 backdrop-blur-sm transition-all cursor-pointer hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] rounded-lg">
+              <CardContent>
+                <h3 className="text-cyan-300 font-medium mb-2">Debug my React code</h3>
+                <p className="text-gray-300 text-sm">Upload a file for code analysis</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-emerald-900/20 to-blue-900/20 border-white/10 hover:from-emerald-900/30 hover:to-blue-900/30 backdrop-blur-sm transition-all cursor-pointer hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] rounded-lg">
+              <CardContent>
+                <h3 className="text-emerald-300 font-medium mb-2">Summarize a scientific paper</h3>
+                <p className="text-gray-300 text-sm">Get concise explanations of complex topics</p>
+              </CardContent>
+            </Card>
           </div>
         </motion.div>
       )}
@@ -166,141 +220,122 @@ export default function ConversationWindow({ messages, sendMessage }) {
       {messages.length > 0 && (
         <div className="chatMessages overflow-y-auto flex-grow space-y-6 pt-4">
           {messages.map((msg, index) => {
-            return msg.role === 'user' 
-              ? renderUserMessage(msg, index)
-              : renderAssistantMessage(msg, index);
+            const { contentWithoutReferences, references } = renderReferences(msg.content);
+            const isUser = msg.role === 'user';
+
+            return (
+              <div key={index} className="flex flex-col w-full mb-8">
+                {/* Message sender icon */}
+                <div className="w-11/12 sm:w-4/5 mx-auto mb-2 flex items-center">
+                  <div className={`flex items-center w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
+                    {!isUser && (
+                      <div className="flex items-center space-x-2">
+                        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 rounded-full shadow-md border border-white/10">
+                          <FaRobot className="text-white text-xs" />
+                        </div>
+                        <span className="text-blue-300 text-xs font-medium">Noctua</span>
+                      </div>
+                    )}
+                    {isUser && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-emerald-300 text-xs font-medium">You</span>
+                        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-1.5 rounded-full shadow-md border border-white/10">
+                          <FaUser className="text-white text-xs" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* The message container with more subtle styling */}
+                <motion.div
+                  initial={{ opacity: 0, x: isUser ? 50 : -50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-11/12 sm:w-4/5 mx-auto"
+                >
+                  <Card 
+                    className={isUser 
+                      ? "bg-gradient-to-br from-blue-600/20 via-blue-500/15 to-indigo-600/10 border-white/10 text-white backdrop-blur-md hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all duration-300 rounded-lg" 
+                      : "bg-gradient-to-br from-gray-900/20 via-gray-800/15 to-gray-900/10 border-white/10 text-white backdrop-blur-md hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] transition-all duration-300 rounded-lg"
+                    }
+                  >
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="relative">
+                        <ReactMarkdown className="text-sm sm:text-base leading-relaxed">
+                          {contentWithoutReferences || msg.content}
+                        </ReactMarkdown>
+                        {references}
+
+                        {/* Any images inside the message */}
+                        {msg.images && msg.images.length > 0 && (
+                          <div className="space-y-6 mt-4">
+                            {msg.images.map((img, idx) => (
+                              <div
+                                key={idx}
+                                className="overflow-hidden rounded-lg shadow-lg border border-white/10 w-full sm:w-4/5 md:w-3/5 mx-auto"
+                              >
+                                <img
+                                  src={img.image_url}
+                                  alt="Chat Image"
+                                  className="w-full h-auto object-cover"
+                                />
+                                {img.title?.text && (
+                                  <div className="p-3 bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm text-center text-sm border-t border-white/10">
+                                    <ReactMarkdown className="text-gray-300">
+                                      {img.title.text}
+                                    </ReactMarkdown>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Feedback + Copy for assistant messages, styled better but back in original location */}
+                {!isUser && (
+                  <div className="w-11/12 sm:w-4/5 mx-auto mt-2 flex justify-end">
+                    <div className="flex items-center space-x-1.5 bg-gray-800/30 rounded-full px-2 py-0.5 backdrop-blur-sm">
+                      <FeedbackButtons messageId={index} />
+                      
+                      <button
+                        onClick={() => handleCopy(msg.content)}
+                        className="p-1 rounded-full transition duration-300 border border-white/5 hover:border-white/10 hover:bg-gray-700/20 text-gray-400 hover:text-gray-300"
+                        title="Copy assistant message"
+                      >
+                        <FaRegCopy className="text-xs" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
           })}
 
           {/* Loading indicator */}
-          {loading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ repeat: Infinity, duration: 1 }}
-              className="text-blue-400 text-lg italic"
-            >
-              Noctua is thinking...
-            </motion.div>
-          )}
+          {loading && renderTypingIndicator()}
         </div>
       )}
 
-      {/* Chat input area - increased height + new search/globe button */}
-      <div className="chatInputContainer flex items-center mt-4 space-x-2">
-        <div className="flex items-center space-x-2">
-          {/* Attachments */}
-          <input
-            type="file"
-            accept="*/*"
-            className="hidden"
-            id="fileInput"
-            onChange={(e) => {
-              const file = e.target.files[0];
-              if (file) {
-                console.log('File selected:', file);
-              }
-            }}
-          />
-          <label
-            htmlFor="fileInput"
-            className="flex items-center justify-center p-3 bg-gray-800 text-white rounded-full 
-                      cursor-pointer hover:bg-blue-500 transition duration-300"
-          >
-            <FaPaperclip size={20} />
-          </label>
-
-          {/* Search/Globe button */}
-          <button
-            onClick={() => setSearchActive(!searchActive)}
-            className={`
-              flex items-center justify-center p-3 rounded-full
-              transition duration-300 transform hover:scale-110 
-              ${
-                searchActive
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }
-            `}
-            title="Toggle search mode"
-          >
-            <FaGlobe size={20} />
-          </button>
-        </div>
-
-        {/* Text input, made taller and expandable */}
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) { // Allow new lines with Shift + Enter
-              e.preventDefault();
-              handleSend();
-            }
-          }}
-          placeholder="Type a message..."
-          className="
-            flex-1 p-3 bg-gray-800 text-white rounded-md
-            focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg
-            resize-none // Prevent manual resizing
-          "
-          style={{ minHeight: '2.5rem', maxHeight: '6rem' }} // Adjusted height for 3 lines
-          disabled={loading}
+      {/* New chat input area using AiInput component */}
+      <div className="w-full mt-4 relative">
+        <AiInput 
+          message={message}
+          setMessage={setMessage}
+          handleSend={handleSend}
+          loading={loading || isLoading}
+          searchActive={searchActive}
+          setSearchActive={setSearchActive}
+          onFileChange={handleFileChange}
         />
-
-        {/* Send button */}
-        <button
-          onClick={handleSend}
-          className={`
-            p-2 text-white rounded-md flex items-center bg-blue-600
-            hover:bg-blue-700 transition duration-300
-            ${loading ? 'opacity-50 cursor-not-allowed' : ''}
-          `}
-          disabled={loading}
-        >
-          <FaPaperPlane size={20} />
-        </button>
+        <p className="text-gray-300 text-xs mt-1 text-center">
+          Noctua can make mistakes, for reference only.
+        </p>
       </div>
-
-      <p className="text-gray-500 text-xs mt-1 text-center">
-        Noctua can make mistakes, for reference only.
-      </p>
     </div>
-  );
-}
-
-// Feedback buttons remain the same
-function FeedbackButtons({ messageId }) {
-  const [feedback, setFeedback] = useState(null);
-
-  const handleFeedback = (type) => {
-    setFeedback(type);
-    console.log(`Feedback for message ${messageId}: ${type}`);
-  };
-
-  return (
-    <>
-      <button
-        onClick={() => handleFeedback('up')}
-        className={`p-2 rounded-full transition duration-300 transform hover:scale-110 ${
-          feedback === 'up'
-            ? 'text-green-500 hover:text-green-600'
-            : 'text-gray-400 hover:text-gray-500'
-        }`}
-        title="Thumbs up"
-      >
-        <FaThumbsUp />
-      </button>
-      <button
-        onClick={() => handleFeedback('down')}
-        className={`p-2 rounded-full transition duration-300 transform hover:scale-110 ${
-          feedback === 'down'
-            ? 'text-red-500 hover:text-red-600'
-            : 'text-gray-400 hover:text-gray-500'
-        }`}
-        title="Thumbs down"
-      >
-        <FaThumbsDown />
-      </button>
-    </>
   );
 }
