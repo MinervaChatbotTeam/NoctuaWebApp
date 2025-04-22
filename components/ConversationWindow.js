@@ -6,12 +6,13 @@ import {
   FaRegCopy,
   FaRobot,
   FaUser,
+  FaHourglassHalf
 } from 'react-icons/fa';
 import ReactMarkdown from "react-markdown";
 import AiInput from './ui/ai-input'; 
 import { Card, CardContent } from './ui/card.jsx';
 
-export default function ConversationWindow({ messages, sendMessage, loading }) {
+export default function ConversationWindow({ messages, sendMessage, loading, processingQueue }) {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
@@ -132,44 +133,76 @@ export default function ConversationWindow({ messages, sendMessage, loading }) {
     );
   };
 
-  const renderTypingIndicator = () => (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="w-11/12 sm:w-4/5 mx-auto mt-4"
-    >
-      <Card className="bg-gray-800/30 border-white/10 backdrop-blur-sm p-2 rounded-lg">
-        <CardContent className="p-3">
-          <div className="flex items-center space-x-3 text-blue-300">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 rounded-full shadow-md border border-white/10">
-              <FaRobot className="text-white text-xs" />
+  const renderTypingIndicator = () => {
+    // Check if this message is in queue or actively being processed
+    const inQueue = processingQueue && !loading;
+    
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="w-11/12 sm:w-4/5 mx-auto mt-4"
+      >
+        <Card className="bg-gray-800/30 border-white/10 backdrop-blur-sm p-2 rounded-lg">
+          <CardContent className="p-3">
+            <div className="flex items-center space-x-3 text-blue-300">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 rounded-full shadow-md border border-white/10">
+                <FaRobot className="text-white text-xs" />
+              </div>
+              
+              {inQueue ? (
+                <div className="flex items-center space-x-2">
+                  <FaHourglassHalf className="text-yellow-400 animate-pulse" />
+                  <span className="text-sm font-light">In queue...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex space-x-1.5">
+                    <motion.div
+                      className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.5, delay: 0 }}
+                    />
+                    <motion.div
+                      className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
+                    />
+                    <motion.div
+                      className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}
+                    />
+                  </div>
+                  <span className="text-sm font-light">Noctua is thinking...</span>
+                </>
+              )}
             </div>
-            <div className="flex space-x-1.5">
-              <motion.div
-                className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
-                animate={{ y: [0, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 1.5, delay: 0 }}
-              />
-              <motion.div
-                className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
-                animate={{ y: [0, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
-              />
-              <motion.div
-                className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
-                animate={{ y: [0, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}
-              />
-            </div>
-            <span className="text-sm font-light">Noctua is thinking...</span>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  // Determine if a message is temporary (waiting to be sent)
+  const hasTempMessages = messages.some(m => m.isTemp);
+  // Show indicator when other chats are processing but current one isn't
+  const otherChatsProcessing = processingQueue && !loading;
 
   return (
     <div className="relative bg-gray-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-gray-900 to-black text-white h-full p-4 flex flex-col">
+      {/* Background processing indicator */}
+      {otherChatsProcessing && (
+        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
+          <div className="bg-gray-800/70 backdrop-blur-sm px-3 py-1 rounded-full border border-blue-500/30 shadow-md">
+            <div className="flex items-center space-x-2">
+              <FaHourglassHalf className="text-yellow-400 animate-pulse" size={10} />
+              <span className="text-xs text-gray-300">Processing in background...</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* If no messages yet, show splash screen */}
       {messages.length === 0 && (
         <motion.div

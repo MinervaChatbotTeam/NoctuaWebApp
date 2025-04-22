@@ -1,10 +1,19 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaPlus, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaHourglassHalf } from 'react-icons/fa';
 import { FiMessageSquare } from 'react-icons/fi';
+import { BiLoaderAlt } from 'react-icons/bi';
 import apiClient from '../ApiClient';
 
-export default function ConversationList({ conversations, setActiveConversation, addNewConversation, getConversations, isSidebarCollapsed }) {
+export default function ConversationList({ 
+  conversations, 
+  setActiveConversation, 
+  addNewConversation, 
+  getConversations, 
+  isSidebarCollapsed,
+  processingConversationId,
+  queueLength 
+}) {
   const [hoverStates, setHoverStates] = useState({});
   const [activeCategory, setActiveCategory] = useState(null);
 
@@ -90,12 +99,24 @@ export default function ConversationList({ conversations, setActiveConversation,
     .animate-shimmer {
       animation: shimmer 2s infinite;
     }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .animate-pulse {
+      animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
   `;
+
+  // Check if we have conversations in the queue
+  const hasQueuedConversations = queueLength > 0;
 
   return (
     <div className="text-white flex flex-col flex-grow overflow-hidden">
       <style>{shimmerAnimation}</style>
-      {/* More impressive New Conversation Button */}
+      
+      {/* New Conversation Button */}
       <motion.button
         whileHover={{ 
           boxShadow: "0 0 15px rgba(59, 130, 246, 0.5)",
@@ -119,6 +140,16 @@ export default function ConversationList({ conversations, setActiveConversation,
           <span className="font-medium tracking-wide text-sm relative z-10">New Conversation</span>
         )}
       </motion.button>
+      
+      {/* Processing Indicator */}
+      {hasQueuedConversations && (
+        <div className="mb-3 px-2 py-1.5 bg-gray-800/50 rounded-md border border-white/5 text-xs text-gray-300">
+          <div className="flex items-center">
+            <BiLoaderAlt className="animate-spin mr-1.5 text-blue-400" size={12} />
+            <span>{queueLength > 1 ? `${queueLength} messages in queue` : '1 message in queue'}</span>
+          </div>
+        </div>
+      )}
 
       {/* Conversation Categories */}
       <div className="space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent pr-1">
@@ -167,6 +198,8 @@ export default function ConversationList({ conversations, setActiveConversation,
                     {categoryConversations.map((conversation) => {
                       const conversationNumber = conversation.title.replace(/\D/g, '') || conversation.title;
                       const isHovered = hoverStates[conversation.id];
+                      const isProcessing = conversation.id === processingConversationId;
+                      const isInQueue = conversation.inQueue;
           
                       return (
                         <motion.li
@@ -177,36 +210,65 @@ export default function ConversationList({ conversations, setActiveConversation,
                           onMouseEnter={() => handleMouseEnter(conversation.id)}
                           onMouseLeave={() => handleMouseLeave(conversation.id)}
                           className={`flex items-center p-2 rounded-lg 
-                            transition-all duration-200 cursor-pointer border border-transparent
-                            ${isHovered ? 'bg-gray-800/80 border-white/5' : 'hover:bg-gray-800/50'}`}
+                            transition-all duration-200 cursor-pointer border 
+                            ${isProcessing 
+                              ? 'bg-blue-900/20 border-blue-500/30 animate-pulse' 
+                              : isInQueue
+                                ? 'bg-amber-900/10 border-amber-500/20' 
+                                : isHovered 
+                                  ? 'bg-gray-800/80 border-white/5' 
+                                  : 'hover:bg-gray-800/50 border-transparent'}`}
                           onClick={() => setActiveConversation(conversation.id)}
                         >
-                          {/* Smaller icon for collapsed sidebar */}
-                          <div className={`bg-gradient-to-br from-blue-500/20 to-indigo-500/20 rounded-md flex items-center justify-center
-                            ${isSidebarCollapsed ? 'p-1' : 'p-1.5'}`}>
-                            <FiMessageSquare size={isSidebarCollapsed ? 12 : 16} className="text-blue-400" />
+                          {/* Icon - show loader or hourglass based on status */}
+                          <div className={`rounded-md flex items-center justify-center
+                            ${isSidebarCollapsed ? 'p-1' : 'p-1.5'}
+                            ${isProcessing 
+                              ? 'bg-blue-500/20' 
+                              : isInQueue
+                                ? 'bg-amber-500/10'
+                                : 'bg-gradient-to-br from-blue-500/20 to-indigo-500/20'}`}>
+                            {isProcessing ? (
+                              <BiLoaderAlt size={isSidebarCollapsed ? 12 : 16} className="text-blue-400 animate-spin" />
+                            ) : isInQueue ? (
+                              <FaHourglassHalf size={isSidebarCollapsed ? 12 : 16} className="text-amber-400" />
+                            ) : (
+                              <FiMessageSquare size={isSidebarCollapsed ? 12 : 16} className="text-blue-400" />
+                            )}
                           </div>
                           
                           {isSidebarCollapsed ? (
                             <span className="ml-1 text-xs font-medium truncate">{conversationNumber}</span>
                           ) : (
                             <>
-                              <span className="flex-1 ml-2 text-sm truncate text-gray-300">
-                                {conversation.title}
-                              </span>
-                              <motion.button
-                                id={`delete-${conversation.id}`}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: isHovered ? 1 : 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="p-1 rounded-md transition duration-300 hover:bg-red-500/20 text-gray-400 hover:text-red-400"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteConversation(conversation.id);
-                                }}
-                              >
-                                <FaTrash size={14} />
-                              </motion.button>
+                              <div className="flex-1 ml-2 flex flex-col min-w-0">
+                                <span className="text-sm truncate text-gray-300 pr-2">
+                                  {conversation.title}
+                                </span>
+                                {isProcessing && (
+                                  <span className="text-xs text-blue-400">Processing...</span>
+                                )}
+                                {isInQueue && (
+                                  <span className="text-xs text-amber-400">In queue...</span>
+                                )}
+                              </div>
+                              
+                              {/* Only show delete when not processing and not in queue */}
+                              {!isProcessing && !isInQueue && (
+                                <motion.button
+                                  id={`delete-${conversation.id}`}
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: isHovered ? 1 : 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="p-1 rounded-md transition duration-300 hover:bg-red-500/20 text-gray-400 hover:text-red-400 flex-shrink-0 ml-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteConversation(conversation.id);
+                                  }}
+                                >
+                                  <FaTrash size={14} />
+                                </motion.button>
+                              )}
                             </>
                           )}
                         </motion.li>
