@@ -251,9 +251,9 @@ export default function ConversationWindow({ messages, sendMessage, loading, pro
 
       {/* Actual chat messages */}
       {messages.length > 0 && (
-        <div className="chatMessages overflow-y-auto flex-grow space-y-6 pt-4">
+        <div className="chatMessages overflow-y-auto flex-grow space-y-6 pt-4 w-full max-w-full">
           {messages.map((msg, index) => {
-            const { contentWithoutReferences, references } = renderReferences(msg.content);
+            const { contentWithoutReferences, references } = msg.content ? renderReferences(msg.content) : { contentWithoutReferences: null, references: null };
             const isUser = msg.role === 'user';
 
             return (
@@ -289,29 +289,31 @@ export default function ConversationWindow({ messages, sendMessage, loading, pro
                 >
                   <Card 
                     className={isUser 
-                      ? "bg-gradient-to-br from-blue-600/20 via-blue-500/15 to-indigo-600/10 border-white/10 text-white backdrop-blur-md hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all duration-300 rounded-lg" 
-                      : "bg-gradient-to-br from-gray-900/20 via-gray-800/15 to-gray-900/10 border-white/10 text-white backdrop-blur-md hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] transition-all duration-300 rounded-lg"
+                      ? "bg-gradient-to-br from-blue-600/20 via-blue-500/15 to-indigo-600/10 border-white/10 text-white backdrop-blur-md hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all duration-300 rounded-lg w-full" 
+                      : "bg-gradient-to-br from-gray-900/20 via-gray-800/15 to-gray-900/10 border-white/10 text-white backdrop-blur-md hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] transition-all duration-300 rounded-lg w-full"
                     }
                   >
-                    <CardContent className="p-3 sm:p-4">
-                      <div className="relative">
-                        <ReactMarkdown className="text-sm sm:text-base leading-relaxed">
-                          {contentWithoutReferences || msg.content}
-                        </ReactMarkdown>
+                    <CardContent className="p-3 sm:p-4 w-full">
+                      <div className="relative w-full">
+                        <div className="markdown-wrapper w-full">
+                          <ReactMarkdown className="text-sm sm:text-base leading-relaxed markdown-content">
+                            {contentWithoutReferences || msg.content}
+                          </ReactMarkdown>
+                        </div>
                         {references}
 
                         {/* Any images inside the message */}
                         {msg.images && msg.images.length > 0 && (
-                          <div className="space-y-6 mt-4">
+                          <div className="space-y-6 mt-4 w-full">
                             {msg.images.map((img, idx) => (
                               <div
                                 key={idx}
-                                className="overflow-hidden rounded-lg shadow-lg border border-white/10 w-full sm:w-4/5 md:w-3/5 mx-auto"
+                                className="overflow-hidden rounded-lg shadow-lg border border-white/10 w-full sm:w-4/5 md:w-3/5 mx-auto max-w-full"
                               >
                                 <img
                                   src={img.image_url}
                                   alt="Chat Image"
-                                  className="w-full h-auto object-cover"
+                                  className="w-full h-auto object-contain max-w-full"
                                 />
                                 {img.title?.text && (
                                   <div className="p-3 bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm text-center text-sm border-t border-white/10">
