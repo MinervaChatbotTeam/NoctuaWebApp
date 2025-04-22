@@ -1,16 +1,108 @@
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   FaThumbsUp,
   FaThumbsDown,
   FaRegCopy,
   FaRobot,
   FaUser,
-  FaHourglassHalf
+  FaHourglassHalf,
+  FaCheck
 } from 'react-icons/fa';
 import ReactMarkdown from "react-markdown";
 import AiInput from './ui/ai-input'; 
 import { Card, CardContent } from './ui/card.jsx';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-tsx';
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-sql';
+
+// Code copy button component
+const CodeCopyButton = ({ code }) => {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  
+  return (
+    <button 
+      onClick={handleCopy}
+      className="absolute top-2 right-2 p-1.5 rounded-md bg-gray-700/80 text-gray-300 hover:bg-gray-600/80 transition-colors"
+      title="Copy code"
+    >
+      {copied ? <FaCheck size={14} className="text-green-400" /> : <FaRegCopy size={14} />}
+    </button>
+  );
+};
+
+// Custom components for ReactMarkdown
+const MarkdownComponents = {
+  code({node, inline, className, children, ...props}) {
+    const match = /language-(\w+)/.exec(className || '');
+    const language = match ? match[1] : '';
+    const codeString = String(children).replace(/\n$/, '');
+    
+    useEffect(() => {
+      if (!inline && language) {
+        Prism.highlightAll();
+      }
+    }, [codeString, language, inline]);
+    
+    return !inline ? (
+      <div className="relative">
+        <pre className={className}>
+          <code className={language ? `language-${language}` : ''} {...props}>
+            {codeString}
+          </code>
+        </pre>
+        <CodeCopyButton code={codeString} />
+      </div>
+    ) : (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  },
+  pre({node, children, ...props}) {
+    return (
+      <pre {...props}>
+        {children}
+      </pre>
+    );
+  },
+  table({node, children, ...props}) {
+    return (
+      <div className="overflow-x-auto w-full">
+        <table {...props} className="w-full">
+          {children}
+        </table>
+      </div>
+    );
+  },
+  th({node, children, ...props}) {
+    return (
+      <th {...props} className="border border-gray-600 bg-gray-800 p-2">
+        {children}
+      </th>
+    );
+  },
+  td({node, children, ...props}) {
+    return (
+      <td {...props} className="border border-gray-600 p-2">
+        {children}
+      </td>
+    );
+  }
+};
 
 export default function ConversationWindow({ messages, sendMessage, loading, processingQueue }) {
   const [message, setMessage] = useState('');
@@ -64,10 +156,11 @@ export default function ConversationWindow({ messages, sendMessage, loading, pro
     const unwantedTextRegex = /(\*\*|\*|\bReferences\b|pages:|,)+/gi;
     const matches = [...content.matchAll(referenceRegex)];
 
+    // Keep markdown formatting intact by only removing references
     let contentWithoutReferences = content
       .replace(referenceRegex, '')
-      .replace(unwantedTextRegex, '')
-      .replace(/,\s*,/g, '')
+      .replace(/\s*\bReferences\b\s*:?\s*/gi, '') // Only remove "References" text
+      .replace(/,\s*,/g, ',')
       .replace(/^\s*,|,\s*$/g, '')
       .trim();
 
@@ -296,7 +389,7 @@ export default function ConversationWindow({ messages, sendMessage, loading, pro
                     <CardContent className="p-3 sm:p-4 w-full">
                       <div className="relative w-full">
                         <div className="markdown-wrapper w-full">
-                          <ReactMarkdown className="text-sm sm:text-base leading-relaxed markdown-content">
+                          <ReactMarkdown className="text-sm sm:text-base leading-relaxed markdown-content" components={MarkdownComponents}>
                             {contentWithoutReferences || msg.content}
                           </ReactMarkdown>
                         </div>
@@ -317,7 +410,7 @@ export default function ConversationWindow({ messages, sendMessage, loading, pro
                                 />
                                 {img.title?.text && (
                                   <div className="p-3 bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm text-center text-sm border-t border-white/10">
-                                    <ReactMarkdown className="text-gray-300">
+                                    <ReactMarkdown className="text-gray-300" components={MarkdownComponents}>
                                       {img.title.text}
                                     </ReactMarkdown>
                                   </div>
