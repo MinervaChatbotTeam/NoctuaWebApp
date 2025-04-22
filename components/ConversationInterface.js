@@ -93,7 +93,17 @@ export default function ConversationInterface() {
             window.location.reload();
             return;
           }
+          
           setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+          
+          // Update conversation title if this is the first message in the conversation
+          const currentMessages = messages.length;
+          if (currentMessages === 0) {
+            // This is the first user message, update title
+            await apiClient.updateConversationTitle(activeConversation, message);
+            // Refresh conversation list to show new title
+            getConversations();
+          }
         } else {
           // Create a new conversation first
           const conversationResponse = await apiClient.createConversation();
@@ -101,6 +111,9 @@ export default function ConversationInterface() {
           
           // Then send the message to the new conversation
           const assistantMessage = await apiClient.sendMessage(newConversationId, message, file);
+          
+          // Update the conversation title based on the first message
+          await apiClient.updateConversationTitle(newConversationId, message);
           
           // Update active conversation and refresh conversation list
           setActiveConversation(newConversationId);

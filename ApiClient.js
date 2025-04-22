@@ -13,6 +13,21 @@ const apiClient = {
     return sessionCookie ? sessionCookie.split('=')[1] : null;
   },
 
+  getConversations: async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/conversations`, {
+        headers: {
+          'Cookie': `next-auth.session-token=${apiClient.getSessionToken()}`
+        },
+        withCredentials: true
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      throw error;
+    }
+  },
+
   createConversation: async () => {
     try {
       const response = await axios.post(`${API_BASE_URL}/conversations`, {}, {
@@ -65,6 +80,46 @@ const apiClient = {
       return response.data;
     } catch (error) {
       console.error('Error getting messages:', error);
+      throw error;
+    }
+  },
+
+  deleteConversation: async (conversationId) => {
+    try {
+      const response = await axios.delete(
+        `${API_BASE_URL}/conversations/${conversationId}`,
+        {
+          headers: {
+            'Cookie': `next-auth.session-token=${apiClient.getSessionToken()}`
+          },
+          withCredentials: true
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      throw error;
+    }
+  },
+
+  updateConversationTitle: async (conversationId, message) => {
+    try {
+      const response = await axios.patch(
+        `${API_BASE_URL}/conversations/${conversationId}`,
+        {
+          message: message
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `next-auth.session-token=${apiClient.getSessionToken()}`
+          },
+          withCredentials: true
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error updating conversation title:', error);
       throw error;
     }
   },
