@@ -1,17 +1,110 @@
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   FaThumbsUp,
   FaThumbsDown,
   FaRegCopy,
   FaRobot,
   FaUser,
+  FaHourglassHalf,
+  FaCheck
 } from 'react-icons/fa';
 import ReactMarkdown from "react-markdown";
 import AiInput from './ui/ai-input'; 
 import { Card, CardContent } from './ui/card.jsx';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-tsx';
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-sql';
 
-export default function ConversationWindow({ messages, sendMessage, loading }) {
+// Code copy button component
+const CodeCopyButton = ({ code }) => {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  
+  return (
+    <button 
+      onClick={handleCopy}
+      className="absolute top-2 right-2 p-1.5 rounded-md bg-gray-700/80 text-gray-300 hover:bg-gray-600/80 transition-colors"
+      title="Copy code"
+    >
+      {copied ? <FaCheck size={14} className="text-green-400" /> : <FaRegCopy size={14} />}
+    </button>
+  );
+};
+
+// Custom components for ReactMarkdown
+const MarkdownComponents = {
+  code({node, inline, className, children, ...props}) {
+    const match = /language-(\w+)/.exec(className || '');
+    const language = match ? match[1] : '';
+    const codeString = String(children).replace(/\n$/, '');
+    
+    useEffect(() => {
+      if (!inline && language) {
+        Prism.highlightAll();
+      }
+    }, [codeString, language, inline]);
+    
+    return !inline ? (
+      <div className="relative">
+        <pre className={className}>
+          <code className={language ? `language-${language}` : ''} {...props}>
+            {codeString}
+          </code>
+        </pre>
+        <CodeCopyButton code={codeString} />
+      </div>
+    ) : (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  },
+  pre({node, children, ...props}) {
+    return (
+      <pre {...props}>
+        {children}
+      </pre>
+    );
+  },
+  table({node, children, ...props}) {
+    return (
+      <div className="overflow-x-auto w-full">
+        <table {...props} className="w-full">
+          {children}
+        </table>
+      </div>
+    );
+  },
+  th({node, children, ...props}) {
+    return (
+      <th {...props} className="border border-gray-600 bg-gray-800 p-2">
+        {children}
+      </th>
+    );
+  },
+  td({node, children, ...props}) {
+    return (
+      <td {...props} className="border border-gray-600 p-2">
+        {children}
+      </td>
+    );
+  }
+};
+
+export default function ConversationWindow({ messages, sendMessage, loading, processingQueue }) {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
@@ -63,10 +156,11 @@ export default function ConversationWindow({ messages, sendMessage, loading }) {
     const unwantedTextRegex = /(\*\*|\*|\bReferences\b|pages:|,)+/gi;
     const matches = [...content.matchAll(referenceRegex)];
 
+    // Keep markdown formatting intact by only removing references
     let contentWithoutReferences = content
       .replace(referenceRegex, '')
-      .replace(unwantedTextRegex, '')
-      .replace(/,\s*,/g, '')
+      .replace(/\s*\bReferences\b\s*:?\s*/gi, '') // Only remove "References" text
+      .replace(/,\s*,/g, ',')
       .replace(/^\s*,|,\s*$/g, '')
       .trim();
 
@@ -132,44 +226,76 @@ export default function ConversationWindow({ messages, sendMessage, loading }) {
     );
   };
 
-  const renderTypingIndicator = () => (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="w-11/12 sm:w-4/5 mx-auto mt-4"
-    >
-      <Card className="bg-gray-800/30 border-white/10 backdrop-blur-sm p-2 rounded-lg">
-        <CardContent className="p-3">
-          <div className="flex items-center space-x-3 text-blue-300">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 rounded-full shadow-md border border-white/10">
-              <FaRobot className="text-white text-xs" />
+  const renderTypingIndicator = () => {
+    // Check if this message is in queue or actively being processed
+    const inQueue = processingQueue && !loading;
+    
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="w-11/12 sm:w-4/5 mx-auto mt-4"
+      >
+        <Card className="bg-gray-800/30 border-white/10 backdrop-blur-sm p-2 rounded-lg">
+          <CardContent className="p-3">
+            <div className="flex items-center space-x-3 text-blue-300">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-1.5 rounded-full shadow-md border border-white/10">
+                <FaRobot className="text-white text-xs" />
+              </div>
+              
+              {inQueue ? (
+                <div className="flex items-center space-x-2">
+                  <FaHourglassHalf className="text-yellow-400 animate-pulse" />
+                  <span className="text-sm font-light">In queue...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex space-x-1.5">
+                    <motion.div
+                      className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.5, delay: 0 }}
+                    />
+                    <motion.div
+                      className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
+                    />
+                    <motion.div
+                      className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}
+                    />
+                  </div>
+                  <span className="text-sm font-light">Noctua is thinking...</span>
+                </>
+              )}
             </div>
-            <div className="flex space-x-1.5">
-              <motion.div
-                className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
-                animate={{ y: [0, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 1.5, delay: 0 }}
-              />
-              <motion.div
-                className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
-                animate={{ y: [0, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
-              />
-              <motion.div
-                className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-sm"
-                animate={{ y: [0, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}
-              />
-            </div>
-            <span className="text-sm font-light">Noctua is thinking...</span>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  // Determine if a message is temporary (waiting to be sent)
+  const hasTempMessages = messages.some(m => m.isTemp);
+  // Show indicator when other chats are processing but current one isn't
+  const otherChatsProcessing = processingQueue && !loading;
 
   return (
     <div className="relative bg-gray-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-gray-900 to-black text-white h-full p-4 flex flex-col">
+      {/* Background processing indicator */}
+      {otherChatsProcessing && (
+        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10">
+          <div className="bg-gray-800/70 backdrop-blur-sm px-3 py-1 rounded-full border border-blue-500/30 shadow-md">
+            <div className="flex items-center space-x-2">
+              <FaHourglassHalf className="text-yellow-400 animate-pulse" size={10} />
+              <span className="text-xs text-gray-300">Processing in background...</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* If no messages yet, show splash screen */}
       {messages.length === 0 && (
         <motion.div
@@ -218,9 +344,9 @@ export default function ConversationWindow({ messages, sendMessage, loading }) {
 
       {/* Actual chat messages */}
       {messages.length > 0 && (
-        <div className="chatMessages overflow-y-auto flex-grow space-y-6 pt-4">
+        <div className="chatMessages overflow-y-auto flex-grow space-y-6 pt-4 w-full max-w-full">
           {messages.map((msg, index) => {
-            const { contentWithoutReferences, references } = renderReferences(msg.content);
+            const { contentWithoutReferences, references } = msg.content ? renderReferences(msg.content) : { contentWithoutReferences: null, references: null };
             const isUser = msg.role === 'user';
 
             return (
@@ -256,33 +382,35 @@ export default function ConversationWindow({ messages, sendMessage, loading }) {
                 >
                   <Card 
                     className={isUser 
-                      ? "bg-gradient-to-br from-blue-600/20 via-blue-500/15 to-indigo-600/10 border-white/10 text-white backdrop-blur-md hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all duration-300 rounded-lg" 
-                      : "bg-gradient-to-br from-gray-900/20 via-gray-800/15 to-gray-900/10 border-white/10 text-white backdrop-blur-md hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] transition-all duration-300 rounded-lg"
+                      ? "bg-gradient-to-br from-blue-600/20 via-blue-500/15 to-indigo-600/10 border-white/10 text-white backdrop-blur-md hover:shadow-[0_0_15px_rgba(59,130,246,0.15)] transition-all duration-300 rounded-lg w-full" 
+                      : "bg-gradient-to-br from-gray-900/20 via-gray-800/15 to-gray-900/10 border-white/10 text-white backdrop-blur-md hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] transition-all duration-300 rounded-lg w-full"
                     }
                   >
-                    <CardContent className="p-3 sm:p-4">
-                      <div className="relative">
-                        <ReactMarkdown className="text-sm sm:text-base leading-relaxed">
-                          {contentWithoutReferences || msg.content}
-                        </ReactMarkdown>
+                    <CardContent className="p-3 sm:p-4 w-full">
+                      <div className="relative w-full">
+                        <div className="markdown-wrapper w-full">
+                          <ReactMarkdown className="text-sm sm:text-base leading-relaxed markdown-content" components={MarkdownComponents}>
+                            {contentWithoutReferences || msg.content}
+                          </ReactMarkdown>
+                        </div>
                         {references}
 
                         {/* Any images inside the message */}
                         {msg.images && msg.images.length > 0 && (
-                          <div className="space-y-6 mt-4">
+                          <div className="space-y-6 mt-4 w-full">
                             {msg.images.map((img, idx) => (
                               <div
                                 key={idx}
-                                className="overflow-hidden rounded-lg shadow-lg border border-white/10 w-full sm:w-4/5 md:w-3/5 mx-auto"
+                                className="overflow-hidden rounded-lg shadow-lg border border-white/10 w-full sm:w-4/5 md:w-3/5 mx-auto max-w-full"
                               >
                                 <img
                                   src={img.image_url}
                                   alt="Chat Image"
-                                  className="w-full h-auto object-cover"
+                                  className="w-full h-auto object-contain max-w-full"
                                 />
                                 {img.title?.text && (
                                   <div className="p-3 bg-gradient-to-r from-gray-800/80 to-gray-900/80 backdrop-blur-sm text-center text-sm border-t border-white/10">
-                                    <ReactMarkdown className="text-gray-300">
+                                    <ReactMarkdown className="text-gray-300" components={MarkdownComponents}>
                                       {img.title.text}
                                     </ReactMarkdown>
                                   </div>

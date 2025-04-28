@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { FaBug, FaChevronLeft, FaChevronRight, FaQuestionCircle, FaSignOutAlt } from 'react-icons/fa';
 import { GiOwl } from 'react-icons/gi';
 import apiClient from '../ApiClient';
@@ -17,15 +17,39 @@ export default function ConversationInterface() {
   const [bugTitle, setBugTitle] = useState('');
   const [bugDescription, setBugDescription] = useState('');
   const [bugImage, setBugImage] = useState(null);
-  const [loading, setLoading] = useState(false);
-
+  
+  // Updated loading state - now specific to different operations
+  const [isLoading, setIsLoading] = useState({
+    conversations: false,     // Loading conversations list
+    messages: false,          // Loading messages for a conversation
+    processing: false         // Processing a message (AI responding)
+  });
+  
+  // Keep track of which conversation is currently being processed
+  const [processingConversationId, setProcessingConversationId] = useState(null);
+  
+  // Message queue for handling multiple messages
+  const messageQueue = useRef([]);
+  const isProcessingQueue = useRef(false);
+  
+  // Store temporary messages per conversation
+  const [tempMessages, setTempMessages] = useState({});
+  
+  // Track which conversations have messages in the queue
+  const getQueuedConversationIds = () => {
+    return messageQueue.current.map(item => item.conversationId);
+  };
+  
   const toggleSidebar = () => setSidebarCollapsed(!isSidebarCollapsed);
 
   const getConversations = async () => {
-    setLoading(true);
+    setIsLoading(prev => ({ ...prev, conversations: true }));
     try {
       const response = await apiClient.getConversations();
       if (response.conversations) {
+        // Get the list of queued conversation IDs
+        const queuedConversationIds = getQueuedConversationIds();
+        
         setConversations(
           response.conversations
             .map((conversation) => {
@@ -39,7 +63,9 @@ export default function ConversationInterface() {
               return {
                 id: conversation.id,
                 title: conversation.title || `Conversation ${conversation.id}`,
-                lastMessageTimestamp
+                lastMessageTimestamp,
+                isProcessing: conversation.id === processingConversationId,
+                inQueue: queuedConversationIds.includes(conversation.id) && conversation.id !== processingConversationId
               };
             })
             .sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp)
@@ -48,69 +74,217 @@ export default function ConversationInterface() {
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
-      setLoading(false);
+      setIsLoading(prev => ({ ...prev, conversations: false }));
     }
   };
 
   useEffect(() => {
     getConversations();
-  }, []);
+  }, [processingConversationId]); // Update when processing state changes
 
   useEffect(() => {
     if (activeConversation) {
       const fetchMessages = async () => {
-        setLoading(true);
+        setIsLoading(prev => ({ ...prev, messages: true }));
         try {
           const response = await apiClient.getMessages(activeConversation);
-          setMessages(response.messages || []);
+          // Combine fetched messages with any temporary messages for this conversation
+          const fetchedMessages = response.messages || [];
+          const conversationTempMessages = tempMessages[activeConversation] || [];
+          
+          setMessages([...fetchedMessages, ...conversationTempMessages]);
         } catch (error) {
           console.error('Error fetching messages:', error);
+          // If there's an error, still show temp messages if available
+          const conversationTempMessages = tempMessages[activeConversation] || [];
+          if (conversationTempMessages.length > 0) {
+            setMessages(conversationTempMessages);
+          }
         } finally {
-          setLoading(false);
+          setIsLoading(prev => ({ ...prev, messages: false }));
         }
       };
       fetchMessages();
     } else {
       setMessages([]);
     }
-  }, [activeConversation]);
+  }, [activeConversation, tempMessages]);
+
+  // Function to process the next message in the queue
+  const processNextInQueue = async () => {
+    if (messageQueue.current.length === 0 || isProcessingQueue.current) {
+      return;
+    }
+
+    isProcessingQueue.current = true;
+    const { conversationId, message, file, tempMessageId } = messageQueue.current[0];
+    
+    try {
+      setProcessingConversationId(conversationId);
+      setIsLoading(prev => ({ ...prev, processing: true }));
+      
+      // Process the message
+      const assistantMessage = await apiClient.sendMessage(conversationId, message, file);
+      
+      if (assistantMessage.error !== undefined) {
+        alert("Error happened while sending the message");
+        messageQueue.current.shift(); // Remove the failed message
+        
+        // Remove the temporary message
+        setTempMessages(prev => {
+          const newTempMessages = { ...prev };
+          if (newTempMessages[conversationId]) {
+            newTempMessages[conversationId] = newTempMessages[conversationId].filter(
+              msg => msg.id !== tempMessageId
+            );
+            if (newTempMessages[conversationId].length === 0) {
+              delete newTempMessages[conversationId];
+            }
+          }
+          return newTempMessages;
+        });
+        
+        if (messageQueue.current.length > 0) {
+          processNextInQueue();
+        }
+        return;
+      }
+      
+      // Only update messages UI if the user is still viewing this conversation
+      if (activeConversation === conversationId) {
+        setMessages(prevMessages => {
+          // Filter out the temporary message
+          const filteredMessages = prevMessages.filter(m => m.id !== tempMessageId);
+          return [...filteredMessages, assistantMessage];
+        });
+      }
+      
+      // Remove the temporary message from storage
+      setTempMessages(prev => {
+        const newTempMessages = { ...prev };
+        if (newTempMessages[conversationId]) {
+          newTempMessages[conversationId] = newTempMessages[conversationId].filter(
+            msg => msg.id !== tempMessageId
+          );
+          if (newTempMessages[conversationId].length === 0) {
+            delete newTempMessages[conversationId];
+          }
+        }
+        return newTempMessages;
+      });
+      
+      // Update conversation title if needed
+      if (messageQueue.current[0].isFirstMessage) {
+        await apiClient.updateConversationTitle(conversationId, message);
+      }
+      
+      // Remove the processed message from the queue
+      messageQueue.current.shift();
+      
+      // Refresh the conversation list
+      getConversations();
+      
+    } catch (error) {
+      console.error('Error processing message:', error);
+      alert("Error happened while processing the message");
+      
+      // Remove the temporary message
+      setTempMessages(prev => {
+        const newTempMessages = { ...prev };
+        if (newTempMessages[conversationId]) {
+          newTempMessages[conversationId] = newTempMessages[conversationId].filter(
+            msg => msg.id !== tempMessageId
+          );
+          if (newTempMessages[conversationId].length === 0) {
+            delete newTempMessages[conversationId];
+          }
+        }
+        return newTempMessages;
+      });
+      
+      messageQueue.current.shift(); // Remove the failed message
+    } finally {
+      setIsLoading(prev => ({ ...prev, processing: false }));
+      setProcessingConversationId(null);
+      isProcessingQueue.current = false;
+      
+      // Process the next message if any
+      if (messageQueue.current.length > 0) {
+        processNextInQueue();
+      }
+    }
+  };
+
+  // Add message to queue and start processing if not already doing so
+  const queueMessage = (conversationId, message, file = null, isFirstMessage = false) => {
+    const tempMessageId = `temp-${Date.now()}`;
+    
+    // Create a temporary message
+    const tempMessage = { 
+      id: tempMessageId,
+      role: 'user', 
+      content: message, 
+      timestamp: new Date().toISOString(),
+      isTemp: true
+    };
+    
+    // Store the temporary message in our persistent state
+    setTempMessages(prev => {
+      const newTempMessages = { ...prev };
+      if (!newTempMessages[conversationId]) {
+        newTempMessages[conversationId] = [];
+      }
+      newTempMessages[conversationId] = [...newTempMessages[conversationId], tempMessage];
+      return newTempMessages;
+    });
+    
+    // If this is the active conversation, update the UI immediately
+    if (activeConversation === conversationId) {
+      setMessages(prevMessages => [...prevMessages, tempMessage]);
+    }
+    
+    // Add to queue
+    messageQueue.current.push({
+      conversationId,
+      message,
+      file,
+      isFirstMessage,
+      tempMessageId
+    });
+    
+    // Update conversation list to reflect queue status
+    getConversations();
+    
+    // Start processing if not already doing so
+    if (!isProcessingQueue.current) {
+      processNextInQueue();
+    }
+  };
 
   const handleSendMessage = async (message, file = null) => {
-    if (message.trim()) {
-      // Add user message to UI immediately
-      setLoading(true);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { role: 'user', content: message, timestamp: new Date().toISOString() },
-      ]);
-
+    if (!message.trim()) return;
+    
+    if (activeConversation) {
+      // Send message to existing conversation
+      const currentMessages = messages.length;
+      queueMessage(activeConversation, message, file, currentMessages === 0);
+    } else {
+      // Create a new conversation first
       try {
-        if (activeConversation) {
-          // Send message to existing conversation
-          const assistantMessage = await apiClient.sendMessage(activeConversation, message, file);
-          if (assistantMessage.error !== undefined) {
-            alert("Error happened while sending the message");
-            window.location.reload();
-            return;
-          }
-          setMessages((prevMessages) => [...prevMessages, assistantMessage]);
-        } else {
-          // Create a new conversation first
-          const conversationResponse = await apiClient.createConversation();
-          const newConversationId = conversationResponse.conversationId;
-          
-          // Then send the message to the new conversation
-          const assistantMessage = await apiClient.sendMessage(newConversationId, message, file);
-          
-          // Update active conversation and refresh conversation list
-          setActiveConversation(newConversationId);
-          getConversations();
-        } 
+        setIsLoading(prev => ({ ...prev, conversations: true }));
+        const conversationResponse = await apiClient.createConversation();
+        const newConversationId = conversationResponse.conversationId;
+        
+        // Set as active conversation
+        setActiveConversation(newConversationId);
+        
+        // Queue the message
+        queueMessage(newConversationId, message, file, true);
       } catch (error) {
-        console.error('Error sending message:', error);
-        alert("Error happened while sending the message");
+        console.error('Error creating conversation:', error);
+        alert("Error happened while creating a new conversation");
       } finally {
-        setLoading(false);
+        setIsLoading(prev => ({ ...prev, conversations: false }));
       }
     }
   };
@@ -137,6 +311,9 @@ export default function ConversationInterface() {
     hover: { backgroundColor: 'rgba(255, 255, 255, 0.1)', scale: 1.05 },
     tap: { scale: 0.95 }
   };
+
+  // Loading state derived from different loading states
+  const loading = isLoading.conversations || isLoading.messages || isLoading.processing;
 
   return (
     <div className="flex h-screen bg-gray-900 overflow-hidden">
@@ -186,6 +363,8 @@ export default function ConversationInterface() {
             addNewConversation={() => setActiveConversation(null)}
             getConversations={getConversations}
             isSidebarCollapsed={isSidebarCollapsed}
+            processingConversationId={processingConversationId}
+            queueLength={messageQueue.current.length}
           />
         </div>
         
@@ -241,7 +420,8 @@ export default function ConversationInterface() {
         <ConversationWindow 
           messages={messages} 
           sendMessage={handleSendMessage} 
-          loading={loading}
+          loading={isLoading.processing && processingConversationId === activeConversation}
+          processingQueue={messageQueue.current.length > 0}
         />
       </div>
       
